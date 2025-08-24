@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Simplified release workflow to use Perl consistently instead of mixing with awk
 - Added LATEST-CHANGES markers to README for automatic release notes updates
 - Fixed release notes extraction to handle empty sections properly
+- Fixed release workflow to wait for test runs to start and complete (was failing when tests hadn't started yet)
 
 ## [0.1.0] - 2025-08-24
 
