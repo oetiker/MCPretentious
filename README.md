@@ -7,15 +7,9 @@
 **The ultimate iTerm2 automation tool for LLM assistants.** MCPretentious enables your LLM to control multiple terminal windows, run commands, debug applications, and interact with command-line tools - all without disrupting your workflow.
 
 <!-- LATEST-CHANGES-START -->
-## 📋 Latest Release (v0.1.1 - 2025-08-24)
+## 📋 Latest Release (v0.1.2 - 2025-08-24)
 
-### Fixed
-- Fixed GitHub Actions release workflow delimiter issue when extracting release notes
-- Simplified release workflow to use Perl consistently instead of mixing with awk
-- Added LATEST-CHANGES markers to README for automatic release notes updates
-- Fixed release notes extraction to handle empty sections properly
-- Fixed release workflow to wait for test runs to start and complete (was failing when tests hadn't started yet)
-- Fixed GHADELIMITER issue by using random delimiter generated with openssl
+See CHANGELOG.md for details
 
 For full changelog, see [CHANGELOG.md](CHANGELOG.md)
 <!-- LATEST-CHANGES-END -->
