@@ -12,8 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
-- Fixed release notes extraction to properly capture subsection headers and content
 
+## [0.1.3] - 2025-08-24
+
+### Fixed
+- Fixed release notes extraction to properly capture subsection headers and content
 ## [0.1.2] - 2025-08-24
 
 ### Fixed
