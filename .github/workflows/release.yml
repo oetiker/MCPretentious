@@ -257,12 +257,17 @@ jobs:
             print STDERR "Looking for version section: ## [$version]\n";
             
             # Extract the content of the specific version section
-            if ($content =~ /## \[\Q$version\E\].*?\n(.*?)(?=## \[|$)/ms) {
+            if ($content =~ /## \[\Q$version\E\][^\n]*\n(.*?)(?=^## \[|\z)/ms) {
               my $notes = $1;
-              # Remove leading/trailing whitespace
-              $notes =~ s/^\s+|\s+$//g;
+              # Remove leading/trailing whitespace but keep internal structure
+              $notes =~ s/^\s+//;
+              $notes =~ s/\s+$//;
               # Default to something if empty
-              print $notes || "See CHANGELOG.md for details";
+              if ($notes && $notes !~ /^\s*$/) {
+                print $notes;
+              } else {
+                print "See CHANGELOG.md for details";
+              }
             } else {
               print STDERR "Version section not found, using default\n";
               print "See CHANGELOG.md for details";
