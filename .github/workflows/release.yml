@@ -189,46 +189,33 @@ jobs:
             # Extract header (everything before [Unreleased])
             my ($header) = $content =~ /^(.*?)(?=## \[Unreleased\])/ms;
             
-            # Extract unreleased content
-            my ($unreleased_content) = $content =~ /## \[Unreleased\]\s*\n(.*?)(?=## \[|$)/ms;
-            $unreleased_content //= "";
+            # Extract all three subsections from Unreleased in one regex
+            my ($added, $changed, $fixed) = $content =~ 
+              /## \[Unreleased\]\s*\n\s*### Added\s*\n(.*?)\s*### Changed\s*\n(.*?)\s*### Fixed\s*\n(.*?)(?=## \[|$)/ms;
+            
+            # Build release content from non-empty sections
+            my $release_content = "";
+            
+            if ($added && $added =~ /\S/) {
+              $added =~ s/^\s+|\s+$//g;
+              $release_content .= "### Added\n$added\n\n";
+            }
+            
+            if ($changed && $changed =~ /\S/) {
+              $changed =~ s/^\s+|\s+$//g;
+              $release_content .= "### Changed\n$changed\n\n";
+            }
+            
+            if ($fixed && $fixed =~ /\S/) {
+              $fixed =~ s/^\s+|\s+$//g;
+              $release_content .= "### Fixed\n$fixed\n\n";
+            }
+            
+            # Remove trailing newlines
+            $release_content =~ s/\n+$//;
             
             # Extract previous versions (everything after [Unreleased] section)
             my ($previous_versions) = $content =~ /(## \[\d+\..*)/ms;
-            $previous_versions //= "";
-            
-            # Process unreleased content to remove empty subsections
-            my @sections;
-            my $current_section = "";
-            my $current_header = "";
-            my $has_content = 0;
-            
-            for my $line (split /\n/, $unreleased_content) {
-              if ($line =~ /^### (.+)/) {
-                # Save previous section if it has content
-                if ($current_header && $has_content) {
-                  push @sections, $current_section;
-                }
-                $current_header = $line;
-                $current_section = "$line\n";
-                $has_content = 0;
-              } elsif ($line =~ /\S/ && $line !~ /^#/) {
-                # Non-empty, non-header line
-                $current_section .= "$line\n";
-                $has_content = 1;
-              } elsif ($has_content) {
-                # Preserve empty lines within sections that have content
-                $current_section .= "$line\n";
-              }
-            }
-            
-            # Add last section if it has content
-            if ($current_header && $has_content) {
-              push @sections, $current_section;
-            }
-            
-            # Build release content
-            my $release_content = join("\n", @sections);
             
             # Write new CHANGELOG
             open(my $out, ">", $file) or die "Cannot write to $file: $!";
