@@ -249,6 +249,11 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.new_version }}"
           
+          # Debug: Show CHANGELOG content for version
+          echo "Looking for version: $VERSION"
+          echo "CHANGELOG sections:"
+          grep "^##" CHANGELOG.md || true
+          
           # Use Perl to extract the release notes for the new version
           perl -e '
             use strict;
@@ -261,6 +266,9 @@ jobs:
             my $content = do { local $/; <$fh> };
             close($fh);
             
+            # Debug: show what we are looking for
+            print STDERR "Looking for version section: ## [$version]\n";
+            
             # Extract the content of the specific version section
             if ($content =~ /## \[\Q$version\E\].*?\n(.*?)(?=## \[|$)/ms) {
               my $notes = $1;
@@ -269,6 +277,7 @@ jobs:
               # Default to something if empty
               print $notes || "See CHANGELOG.md for details";
             } else {
+              print STDERR "Version section not found, using default\n";
               print "See CHANGELOG.md for details";
             }
           ' "$VERSION" "CHANGELOG.md" > release_notes.txt
@@ -286,11 +295,12 @@ jobs:
           # Store in GitHub output using a safe method with unique delimiter
           delimiter="$(openssl rand -hex 16)"
           echo "Using delimiter: ${delimiter}"
-          {
-            echo "notes<<${delimiter}"
-            cat release_notes.txt
-            echo "${delimiter}"
-          } >> "$GITHUB_OUTPUT"
+          
+          # Write to GITHUB_OUTPUT with proper newlines
+          echo "notes<<${delimiter}" >> "$GITHUB_OUTPUT"
+          cat release_notes.txt >> "$GITHUB_OUTPUT"
+          echo "" >> "$GITHUB_OUTPUT"  # Ensure newline before delimiter
+          echo "${delimiter}" >> "$GITHUB_OUTPUT"
           
       - name: Update README with Latest Changes
         run: |
