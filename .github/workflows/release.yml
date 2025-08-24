@@ -273,11 +273,23 @@ jobs:
             }
           ' "$VERSION" "CHANGELOG.md" > release_notes.txt
           
-          # Store in GitHub output using a safe method
+          # Debug: Show what we extracted
+          echo "=== Extracted release notes ==="
+          cat release_notes.txt
+          echo "=== End of release notes ==="
+          
+          # Ensure file has content
+          if [ ! -s release_notes.txt ]; then
+            echo "See CHANGELOG.md for details" > release_notes.txt
+          fi
+          
+          # Store in GitHub output using a safe method with unique delimiter
+          delimiter="$(openssl rand -hex 16)"
+          echo "Using delimiter: ${delimiter}"
           {
-            echo 'notes<<GHADELIMITER'
+            echo "notes<<${delimiter}"
             cat release_notes.txt
-            echo 'GHADELIMITER'
+            echo "${delimiter}"
           } >> "$GITHUB_OUTPUT"
           
       - name: Update README with Latest Changes
