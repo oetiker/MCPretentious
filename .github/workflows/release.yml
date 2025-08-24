@@ -1,0 +1,454 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  verify-tests:
+    runs-on: macos-latest
+    outputs:
+      tests_passed: ${{ steps.check_tests.outputs.passed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get current commit SHA
+        id: get_sha
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+          echo "Current SHA: $(git rev-parse HEAD)"
+
+      - name: Check for test workflow runs
+        id: check_tests
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = '${{ steps.get_sha.outputs.sha }}';
+            console.log(`Checking test runs for commit: ${sha}`);
+            
+            // Get the test workflow ID first
+            const workflows = await github.rest.actions.listRepoWorkflows({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            
+            const testWorkflow = workflows.data.workflows.find(w => w.path === '.github/workflows/test.yml');
+            if (!testWorkflow) {
+              core.setFailed('Could not find test.yml workflow');
+              return;
+            }
+            
+            console.log(`Found test workflow with ID: ${testWorkflow.id}`);
+            
+            // Check for completed test runs
+            const completedRuns = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: testWorkflow.id,
+              head_sha: sha,
+              status: 'completed'
+            });
+            
+            if (completedRuns.data.workflow_runs.length > 0) {
+              const latestRun = completedRuns.data.workflow_runs[0];
+              console.log(`Found completed test run: ${latestRun.html_url}`);
+              console.log(`Conclusion: ${latestRun.conclusion}`);
+              
+              if (latestRun.conclusion === 'success') {
+                core.setOutput('passed', 'true');
+                core.notice(`✅ Tests passed for commit ${sha.substring(0, 7)}`);
+                
+                // Add to summary
+                await core.summary
+                  .addHeading('Test Verification')
+                  .addRaw(`✅ Tests passed successfully`)
+                  .addBreak()
+                  .addLink('View test run', latestRun.html_url)
+                  .write();
+                
+                return;
+              } else {
+                core.setFailed(`❌ Tests failed for commit ${sha.substring(0, 7)}`);
+                await core.summary
+                  .addHeading('Test Verification')
+                  .addRaw(`❌ Tests failed`)
+                  .addBreak()
+                  .addLink('View test run', latestRun.html_url)
+                  .write();
+                return;
+              }
+            }
+            
+            // Check for in-progress runs
+            console.log('No completed runs found, checking for in-progress runs...');
+            const inProgressRuns = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: testWorkflow.id,
+              head_sha: sha,
+              status: 'in_progress'
+            });
+            
+            if (inProgressRuns.data.workflow_runs.length > 0) {
+              const run = inProgressRuns.data.workflow_runs[0];
+              console.log(`Found in-progress test run: ${run.html_url}`);
+              core.notice(`⏳ Tests are currently running for commit ${sha.substring(0, 7)}`);
+              
+              // Wait for up to 5 minutes for tests to complete
+              const maxWaitTime = 5 * 60 * 1000; // 5 minutes
+              const pollInterval = 10 * 1000; // 10 seconds
+              const startTime = Date.now();
+              
+              while (Date.now() - startTime < maxWaitTime) {
+                await new Promise(resolve => setTimeout(resolve, pollInterval));
+                
+                const runStatus = await github.rest.actions.getWorkflowRun({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  run_id: run.id
+                });
+                
+                if (runStatus.data.status === 'completed') {
+                  console.log(`Test run completed with conclusion: ${runStatus.data.conclusion}`);
+                  
+                  if (runStatus.data.conclusion === 'success') {
+                    core.setOutput('passed', 'true');
+                    core.notice(`✅ Tests passed for commit ${sha.substring(0, 7)}`);
+                    
+                    await core.summary
+                      .addHeading('Test Verification')
+                      .addRaw(`✅ Tests passed successfully after waiting`)
+                      .addBreak()
+                      .addLink('View test run', runStatus.data.html_url)
+                      .write();
+                    
+                    return;
+                  } else {
+                    core.setFailed(`❌ Tests failed for commit ${sha.substring(0, 7)}`);
+                    await core.summary
+                      .addHeading('Test Verification')
+                      .addRaw(`❌ Tests failed`)
+                      .addBreak()
+                      .addLink('View test run', runStatus.data.html_url)
+                      .write();
+                    return;
+                  }
+                }
+                
+                console.log('Tests still running, waiting...');
+              }
+              
+              core.setFailed(`⏰ Tests did not complete within 5 minutes`);
+              await core.summary
+                .addHeading('Test Verification')
+                .addRaw(`⏰ Tests timed out after 5 minutes`)
+                .addBreak()
+                .addLink('View test run', run.html_url)
+                .write();
+              return;
+            }
+            
+            // No test runs found
+            console.log('No test runs found for this commit');
+            core.setFailed(`❌ No test runs found for commit ${sha.substring(0, 7)}. Tests should run automatically on push to main.`);
+            await core.summary
+              .addHeading('Test Verification')
+              .addRaw(`❌ No test runs found for this commit`)
+              .addRaw(`Tests should run automatically when pushing to main branch`)
+              .write();
+
+  release:
+    needs: verify-tests
+    if: needs.verify-tests.outputs.tests_passed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Bump version
+        id: version
+        run: |
+          # Bump version based on release type
+          npm version ${{ github.event.inputs.release_type }} --no-git-tag-version
+          
+          # Get the new version
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "New version: $NEW_VERSION"
+
+      - name: Update CHANGELOG
+        run: |
+          VERSION="${{ steps.version.outputs.new_version }}"
+          DATE=$(date +%Y-%m-%d)
+          
+          # Use Perl to process the CHANGELOG
+          perl -e '
+            use strict;
+            use warnings;
+            
+            my $version = shift @ARGV;
+            my $date = shift @ARGV;
+            my $file = shift @ARGV;
+            
+            # Read the entire file
+            open(my $fh, "<", $file) or die "Cannot open $file: $!";
+            my $content = do { local $/; <$fh> };
+            close($fh);
+            
+            # Extract header (everything before [Unreleased])
+            my ($header) = $content =~ /^(.*?)(?=## \[Unreleased\])/ms;
+            
+            # Extract unreleased content
+            my ($unreleased_content) = $content =~ /## \[Unreleased\]\s*\n(.*?)(?=## \[|$)/ms;
+            $unreleased_content //= "";
+            
+            # Extract previous versions (everything after [Unreleased] section)
+            my ($previous_versions) = $content =~ /(## \[\d+\..*)/ms;
+            $previous_versions //= "";
+            
+            # Process unreleased content to remove empty subsections
+            my @sections;
+            my $current_section = "";
+            my $current_header = "";
+            my $has_content = 0;
+            
+            for my $line (split /\n/, $unreleased_content) {
+              if ($line =~ /^### (.+)/) {
+                # Save previous section if it has content
+                if ($current_header && $has_content) {
+                  push @sections, $current_section;
+                }
+                $current_header = $line;
+                $current_section = "$line\n";
+                $has_content = 0;
+              } elsif ($line =~ /\S/ && $line !~ /^#/) {
+                # Non-empty, non-header line
+                $current_section .= "$line\n";
+                $has_content = 1;
+              } elsif ($has_content) {
+                # Preserve empty lines within sections that have content
+                $current_section .= "$line\n";
+              }
+            }
+            
+            # Add last section if it has content
+            if ($current_header && $has_content) {
+              push @sections, $current_section;
+            }
+            
+            # Build release content
+            my $release_content = join("\n", @sections);
+            
+            # Write new CHANGELOG
+            open(my $out, ">", $file) or die "Cannot write to $file: $!";
+            print $out $header;
+            print $out "## [Unreleased]\n\n";
+            print $out "### Added\n\n";
+            print $out "### Changed\n\n";
+            print $out "### Fixed\n\n";
+            print $out "## [$version] - $date\n\n";
+            print $out $release_content;
+            print $out "\n" unless $release_content =~ /\n$/;
+            print $out $previous_versions if $previous_versions;
+            close($out);
+          ' "$VERSION" "$DATE" "CHANGELOG.md"
+
+      - name: Generate Release Notes from CHANGELOG
+        id: release_notes
+        run: |
+          VERSION="${{ steps.version.outputs.new_version }}"
+          
+          # Use Perl to extract the release notes for the new version
+          perl -e '
+            use strict;
+            use warnings;
+            
+            my $version = shift @ARGV;
+            my $file = shift @ARGV;
+            
+            open(my $fh, "<", $file) or die "Cannot open $file: $!";
+            my $content = do { local $/; <$fh> };
+            close($fh);
+            
+            # Extract the content of the specific version section
+            if ($content =~ /## \[\Q$version\E\].*?\n(.*?)(?=## \[|$)/ms) {
+              my $notes = $1;
+              # Remove leading/trailing whitespace
+              $notes =~ s/^\s+|\s+$//g;
+              print $notes if $notes;
+            }
+          ' "$VERSION" "CHANGELOG.md" > release_notes.txt
+          
+          # Store in GitHub output using a safe method
+          {
+            echo 'notes<<GHADELIMITER'
+            cat release_notes.txt
+            echo 'GHADELIMITER'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Update README with Latest Changes
+        run: |
+          VERSION="${{ steps.version.outputs.new_version }}"
+          DATE=$(date +%Y-%m-%d)
+          
+          # Create the Latest Changes section content
+          cat > latest_changes.tmp << 'EOF'
+          ## Latest Changes (v$VERSION - $DATE)
+
+          EOF
+          
+          # Add the release notes
+          cat release_notes.txt >> latest_changes.tmp
+          
+          # Add link to full changelog
+          cat >> latest_changes.tmp << 'EOF'
+
+          For full changelog, see [CHANGELOG.md](https://github.com/oetiker/MCPretentious/blob/main/CHANGELOG.md)
+          EOF
+          
+          # Now substitute the variables
+          sed -i.bak "s/\$VERSION/$VERSION/g" latest_changes.tmp
+          sed -i.bak "s/\$DATE/$DATE/g" latest_changes.tmp
+          rm latest_changes.tmp.bak
+          
+          # Update README.md - replace content between markers or add before ## Features
+          if grep -q "<!-- LATEST-CHANGES-START -->" README.md; then
+            # Markers exist, replace content between them
+            awk '
+              /<!-- LATEST-CHANGES-START -->/ {
+                print
+                system("cat latest_changes.tmp")
+                skip=1
+                next
+              }
+              /<!-- LATEST-CHANGES-END -->/ {
+                skip=0
+              }
+              !skip
+            ' README.md > README.tmp.md
+            mv README.tmp.md README.md
+          else
+            # No markers, add section before ## Features
+            awk '
+              /^## Features/ {
+                print "<!-- LATEST-CHANGES-START -->"
+                system("cat latest_changes.tmp")
+                print "<!-- LATEST-CHANGES-END -->"
+                print ""
+              }
+              {print}
+            ' README.md > README.tmp.md
+            mv README.tmp.md README.md
+          fi
+          
+          rm latest_changes.tmp release_notes.txt
+
+      - name: Commit changes
+        run: |
+          git add package.json package-lock.json CHANGELOG.md README.md
+          git commit -m "chore: release v${{ steps.version.outputs.new_version }}
+
+          Co-authored-by: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+
+      - name: Push changes
+        run: |
+          git push origin main
+
+      - name: Create and push tag
+        run: |
+          git tag -a "v${{ steps.version.outputs.new_version }}" -m "Release v${{ steps.version.outputs.new_version }}"
+          git push origin "v${{ steps.version.outputs.new_version }}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.new_version }}
+          name: Release v${{ steps.version.outputs.new_version }}
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.new_version, '-') }}
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Add summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const version = '${{ steps.version.outputs.new_version }}';
+            await core.summary
+              .addHeading('Release Summary')
+              .addRaw(`✅ Successfully released version ${version}`)
+              .addBreak()
+              .addLink('View on npm', `https://www.npmjs.com/package/mcpretentious/v/${version}`)
+              .addBreak()
+              .addLink('View GitHub Release', `https://github.com/${context.repo.owner}/${context.repo.repo}/releases/tag/v${version}`)
+              .write();
+
+  verify-publication:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          
+      - name: Get version from package.json
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Wait for npm propagation
+        run: sleep 30
+
+      - name: Verify npm package
+        run: |
+          npm view mcpretentious@${{ steps.version.outputs.version }} || (echo "Package not found on npm after 30 seconds" && exit 1)
+
+      - name: Add verification summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const version = '${{ steps.version.outputs.version }}';
+            await core.summary
+              .addHeading('Publication Verification')
+              .addRaw(`✅ Package successfully published to npm`)
+              .addBreak()
+              .addLink('View package', `https://www.npmjs.com/package/mcpretentious/v/${version}`)
+              .write();

@@ -1,0 +1,55 @@
+{
+  "name": "mcpretentious",
+  "version": "0.0.0",
+  "description": "MCPretentious - the Final iTerm MCP. High-performance iTerm2 automation via WebSocket API with cursor position, colors, and styles. No focus stealing, 20x faster than AppleScript.",
+  "main": "mcpretentious.js",
+  "type": "module",
+  "bin": {
+    "mcpretentious": "mcpretentious.js",
+    "mcpretentious-test": "mcpretentious-test.js"
+  },
+  "scripts": {
+    "start": "node mcpretentious.js",
+    "test": "node --test test/mock.test.mjs",
+    "test:integration": "node --test test/integration.test.mjs",
+    "test:watch": "node --test --watch test/mock.test.mjs",
+    "test:all": "node --test test/*.mjs"
+  },
+  "keywords": [
+    "mcp",
+    "iterm",
+    "iterm2",
+    "terminal",
+    "model-context-protocol",
+    "cursor-ide",
+    "claude-code"
+  ],
+  "author": "Tobi Oetiker",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oetiker/MCPretentious.git"
+  },
+  "bugs": {
+    "url": "https://github.com/oetiker/MCPretentious/issues"
+  },
+  "homepage": "https://github.com/oetiker/MCPretentious#readme",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.7.0",
+    "protobufjs": "^7.2.5",
+    "ws": "^8.16.0",
+    "zod": "^3.24.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "files": [
+    "index.js",
+    "lib/",
+    "proto/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "test/"
+  ]
+}
