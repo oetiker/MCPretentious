@@ -6,6 +6,12 @@
 
 **The ultimate iTerm2 automation tool for LLM assistants.** MCPretentious enables your LLM to control multiple terminal windows, run commands, debug applications, and interact with command-line tools - all without disrupting your workflow.
 
+<!-- LATEST-CHANGES-START -->
+## 📋 Latest Release
+
+Initial release - see [CHANGELOG.md](CHANGELOG.md) for details.
+<!-- LATEST-CHANGES-END -->
+
 ## ⚡ High-Performance WebSocket Implementation
 
 MCPretentious is the **only MCP implementation** that uses iTerm2's native WebSocket API with Protocol Buffers for lightning-fast terminal control - **20x faster than AppleScript-based solutions**. We reverse-engineered the Python API bindings to bring you direct WebSocket communication, providing instant feedback and real-time terminal interaction.

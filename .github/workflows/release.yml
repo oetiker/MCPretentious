@@ -307,7 +307,10 @@ jobs:
               my $notes = $1;
               # Remove leading/trailing whitespace
               $notes =~ s/^\s+|\s+$//g;
-              print $notes if $notes;
+              # Default to something if empty
+              print $notes || "See CHANGELOG.md for details";
+            } else {
+              print "See CHANGELOG.md for details";
             }
           ' "$VERSION" "CHANGELOG.md" > release_notes.txt
           
@@ -317,63 +320,60 @@ jobs:
             cat release_notes.txt
             echo 'GHADELIMITER'
           } >> "$GITHUB_OUTPUT"
-
+          
       - name: Update README with Latest Changes
         run: |
           VERSION="${{ steps.version.outputs.new_version }}"
           DATE=$(date +%Y-%m-%d)
           
-          # Create the Latest Changes section content
-          cat > latest_changes.tmp << 'EOF'
-          ## Latest Changes (v$VERSION - $DATE)
-
-          EOF
+          # Use Perl to update README with latest changes
+          perl -e '
+            use strict;
+            use warnings;
+            
+            my $version = shift @ARGV;
+            my $date = shift @ARGV;
+            my $notes_file = shift @ARGV;
+            my $readme_file = shift @ARGV;
+            
+            # Read release notes
+            my $notes = "";
+            if (-s $notes_file) {
+              open(my $fh, "<", $notes_file) or die "Cannot open $notes_file: $!";
+              $notes = do { local $/; <$fh> };
+              close($fh);
+              chomp $notes;
+            }
+            $notes ||= "See [CHANGELOG.md](CHANGELOG.md) for details";
+            
+            # Read README
+            open(my $fh, "<", $readme_file) or die "Cannot open $readme_file: $!";
+            my $readme = do { local $/; <$fh> };
+            close($fh);
+            
+            # Check for markers
+            if ($readme !~ /<!-- LATEST-CHANGES-START -->.*?<!-- LATEST-CHANGES-END -->/s) {
+              die "ERROR: README.md is missing LATEST-CHANGES markers!\n";
+            }
+            
+            # Create the latest changes section
+            my $latest_section = "<!-- LATEST-CHANGES-START -->\n";
+            $latest_section .= "## 📋 Latest Release (v${version} - ${date})\n\n";
+            $latest_section .= "${notes}\n\n";
+            $latest_section .= "For full changelog, see [CHANGELOG.md](CHANGELOG.md)\n";
+            $latest_section .= "<!-- LATEST-CHANGES-END -->";
+            
+            # Replace existing section
+            $readme =~ s/<!-- LATEST-CHANGES-START -->.*?<!-- LATEST-CHANGES-END -->/$latest_section/s;
+            
+            # Write updated README
+            open(my $out, ">", $readme_file) or die "Cannot write to $readme_file: $!";
+            print $out $readme;
+            close($out);
+          ' "$VERSION" "$DATE" "release_notes.txt" "README.md"
           
-          # Add the release notes
-          cat release_notes.txt >> latest_changes.tmp
-          
-          # Add link to full changelog
-          cat >> latest_changes.tmp << 'EOF'
-
-          For full changelog, see [CHANGELOG.md](https://github.com/oetiker/MCPretentious/blob/main/CHANGELOG.md)
-          EOF
-          
-          # Now substitute the variables
-          sed -i.bak "s/\$VERSION/$VERSION/g" latest_changes.tmp
-          sed -i.bak "s/\$DATE/$DATE/g" latest_changes.tmp
-          rm latest_changes.tmp.bak
-          
-          # Update README.md - replace content between markers or add before ## Features
-          if grep -q "<!-- LATEST-CHANGES-START -->" README.md; then
-            # Markers exist, replace content between them
-            awk '
-              /<!-- LATEST-CHANGES-START -->/ {
-                print
-                system("cat latest_changes.tmp")
-                skip=1
-                next
-              }
-              /<!-- LATEST-CHANGES-END -->/ {
-                skip=0
-              }
-              !skip
-            ' README.md > README.tmp.md
-            mv README.tmp.md README.md
-          else
-            # No markers, add section before ## Features
-            awk '
-              /^## Features/ {
-                print "<!-- LATEST-CHANGES-START -->"
-                system("cat latest_changes.tmp")
-                print "<!-- LATEST-CHANGES-END -->"
-                print ""
-              }
-              {print}
-            ' README.md > README.tmp.md
-            mv README.tmp.md README.md
-          fi
-          
-          rm latest_changes.tmp release_notes.txt
+          # Clean up temp file
+          rm release_notes.txt
 
       - name: Commit changes
         run: |
@@ -396,7 +396,8 @@ jobs:
         with:
           tag_name: v${{ steps.version.outputs.new_version }}
           name: Release v${{ steps.version.outputs.new_version }}
-          generate_release_notes: true
+          body: ${{ steps.release_notes.outputs.notes }}
+          generate_release_notes: false
           draft: false
           prerelease: ${{ contains(steps.version.outputs.new_version, '-') }}
 
