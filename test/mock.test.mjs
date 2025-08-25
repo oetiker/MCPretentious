@@ -37,7 +37,11 @@ describe('MCPretentious Tests with Real Server', () => {
     // Create transport that will spawn the server
     transport = new StdioClientTransport({
       command: 'node',
-      args: [join(__dirname, '..', 'mcpretentious.js')]
+      args: [join(__dirname, '..', 'mcpretentious.js')],
+      env: {
+        ...process.env,
+        NODE_ENV: 'test'
+      }
     });
     
     // Create client
