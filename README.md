@@ -7,9 +7,15 @@
 **The ultimate iTerm2 automation tool for LLM assistants.** MCPretentious enables your LLM to control multiple terminal windows, run commands, debug applications, and interact with command-line tools - all without disrupting your workflow.
 
 <!-- LATEST-CHANGES-START -->
-## 📋 Latest Release (v0.2.1 - 2025-08-25)
+## 📋 Latest Release (v0.2.2 - 2025-08-25)
 
-See CHANGELOG.md for details
+### Changed
+- Terminal IDs now use iTerm2 session UUIDs directly instead of generated IDs
+- Terminals persist across MCP restarts (as long as tabs remain open)
+- Simplified codebase by removing ID mapping layer
+
+### Fixed
+- Fixed terminal discovery after MCP restart - all existing terminals are now accessible
 
 For full changelog, see [CHANGELOG.md](CHANGELOG.md)
 <!-- LATEST-CHANGES-END -->

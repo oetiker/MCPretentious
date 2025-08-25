@@ -10,14 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 ### Changed
+
+### Fixed
+
+## [0.2.2] - 2025-08-25
+
+### Changed
 - Terminal IDs now use iTerm2 session UUIDs directly instead of generated IDs
 - Terminals persist across MCP restarts (as long as tabs remain open)
 - Simplified codebase by removing ID mapping layer
 
 ### Fixed
 - Fixed terminal discovery after MCP restart - all existing terminals are now accessible
-- Fixed integration tests to work with UUID-based terminal IDs
-
 ## [0.2.1] - 2025-08-25
 
 ### Fixed
