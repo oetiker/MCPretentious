@@ -186,7 +186,7 @@ Check your MCP client's logs - all errors are logged to stderr and captured ther
 
 ## 📄 License
 
-ISC
+MIT License. See [LICENSE](LICENSE) for details.
 
 ## 👤 Author
 
@@ -196,4 +196,4 @@ Tobias Oetiker <tobi@oetiker.ch>
 
 - Built for the [Model Context Protocol](https://modelcontextprotocol.io/)
 - Designed for [Claude Desktop](https://claude.LLM) and other MCP-compatible clients
-- Inspired by [iTerm-Server-MCP](
+- Inspired by [iTerm-Server-MCP](https://github.com/rishabkoul/iTerm-MCP-Server)
