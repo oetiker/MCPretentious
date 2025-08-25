@@ -899,5 +899,126 @@ EOF`;
       assert.ok(data.text.length <= 5, 'Should have at most 5 lines');
       assert.ok(data.text[0].length <= 40, 'Lines should be at most 40 chars');
     });
+    
+    it('should get screenshot around cursor', async () => {
+      const result = await client.callTool({
+        name: 'mcpretentious-screenshot',
+        arguments: {
+          terminalId: testTerminalId,
+          layers: ['text', 'cursor'],
+          aroundCursor: 3
+        }
+      });
+      
+      const data = JSON.parse(result.content[0].text);
+      
+      // Verify viewport mode and size
+      assert.ok(data.viewport.mode === 'aroundCursor', 'Viewport mode should be aroundCursor');
+      assert.ok(data.viewport.height === 7, 'Should show 7 lines (3 above + cursor + 3 below)');
+      
+      // Verify relative cursor position
+      assert.ok(typeof data.cursor.relLeft === 'number', 'Should have relative left position');
+      assert.ok(typeof data.cursor.relTop === 'number', 'Should have relative top position');
+      assert.ok(data.cursor.relTop >= 0 && data.cursor.relTop < 7, 'Relative top should be within viewport');
+    });
+    
+    it('should get screenshot with color layers', async () => {
+      // Send colored text
+      await client.callTool({
+        name: 'mcpretentious-type',
+        arguments: {
+          terminalId: testTerminalId,
+          input: ['echo -e "\\033[31mRed\\033[0m \\033[32mGreen\\033[0m \\033[34mBlue\\033[0m"', { key: 'enter' }]
+        }
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      const result = await client.callTool({
+        name: 'mcpretentious-screenshot',
+        arguments: {
+          terminalId: testTerminalId,
+          layers: ['text', 'fgColors', 'bgColors'],
+          aroundCursor: 2
+        }
+      });
+      
+      const data = JSON.parse(result.content[0].text);
+      
+      // Should have color layers
+      assert.ok(data.fgColors, 'Should have foreground colors');
+      assert.ok(Array.isArray(data.fgColors), 'fgColors should be an array');
+      assert.ok(data.bgColors, 'Should have background colors');
+      assert.ok(data.colorPalette, 'Should have color palette');
+      assert.ok(data.colorPalette['0'] === null, 'Palette should have default color');
+      
+      // Color strings should match text lines
+      assert.ok(data.fgColors.length === data.text.length, 'Color arrays should match text length');
+    });
+    
+    it('should get screenshot with individual style layers', async () => {
+      const result = await client.callTool({
+        name: 'mcpretentious-screenshot',
+        arguments: {
+          terminalId: testTerminalId,
+          layers: ['text', 'bold', 'italic', 'underline'],
+          aroundCursor: 2
+        }
+      });
+      
+      const data = JSON.parse(result.content[0].text);
+      
+      // Should have individual style layers
+      assert.ok(data.bold, 'Should have bold layer');
+      assert.ok(data.italic, 'Should have italic layer');
+      assert.ok(data.underline, 'Should have underline layer');
+      assert.ok(!data.styles, 'Should not have combined styles layer');
+      assert.ok(!data.styleLegend, 'Should not have style legend');
+      
+      // Each layer should be array of strings
+      assert.ok(Array.isArray(data.bold), 'Bold should be an array');
+      assert.ok(data.bold.length === data.text.length, 'Bold array should match text length');
+      assert.ok(typeof data.bold[0] === 'string', 'Bold entries should be strings');
+    });
+    
+    it('should handle compact mode', async () => {
+      // Add some empty lines
+      await client.callTool({
+        name: 'mcpretentious-type',
+        arguments: {
+          terminalId: testTerminalId,
+          input: ['echo ""', { key: 'enter' }, 'echo ""', { key: 'enter' }, 'echo "test"', { key: 'enter' }]
+        }
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      const normalResult = await client.callTool({
+        name: 'mcpretentious-screenshot',
+        arguments: {
+          terminalId: testTerminalId,
+          layers: ['text']
+        }
+      });
+      
+      const compactResult = await client.callTool({
+        name: 'mcpretentious-screenshot',
+        arguments: {
+          terminalId: testTerminalId,
+          layers: ['text'],
+          compact: true
+        }
+      });
+      
+      const normalData = JSON.parse(normalResult.content[0].text);
+      const compactData = JSON.parse(compactResult.content[0].text);
+      
+      // Compact should have fewer lines
+      assert.ok(compactData.text.length < normalData.text.length, 'Compact mode should have fewer lines');
+      
+      // Compact should have no empty lines
+      const hasEmpty = compactData.text.some(line => line.trim() === '');
+      assert.ok(!hasEmpty, 'Compact mode should have no empty lines');
+    });
   });
 });
