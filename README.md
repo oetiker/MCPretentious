@@ -7,14 +7,10 @@
 **The ultimate iTerm2 automation tool for LLM assistants.** MCPretentious enables your LLM to control multiple terminal windows, run commands, debug applications, and interact with command-line tools - all without disrupting your workflow.
 
 <!-- LATEST-CHANGES-START -->
-## 📋 Latest Release (v0.2.3 - 2025-08-25)
-
-### Added
-- New `getProperty` method in iTerm2Client to query terminal properties directly from iTerm2 API
-- Integration tests for wide terminal support (132 columns) and dimension reporting accuracy
+## 📋 Latest Release (v0.2.4 - 2025-08-25)
 
 ### Fixed
-- Terminal dimension reporting now uses actual dimensions from iTerm2's `grid_size` property instead of hardcoded 80x24 defaults
+- Screenshot dimensions now correctly account for iTerm2's grid_size being 1 less than actual content dimensions (width + 1, height + 1)
 
 For full changelog, see [CHANGELOG.md](CHANGELOG.md)
 <!-- LATEST-CHANGES-END -->
