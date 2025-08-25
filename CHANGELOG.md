@@ -12,10 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
-- Fixed package.json files array to include actual entry points (mcpretentious.js, mcpretentious-test.js)
-- Added API.md to package.json files array
-- Removed non-existent index.js from package.json files array
 
+## [0.1.5] - 2025-08-25
+
+### Fixed
+- Fixed package.json files array to include actual entry points (mcpretentious.js, mcpretentious-test.js)
 ## [0.1.4] - 2025-08-25
 
 ### Changed
