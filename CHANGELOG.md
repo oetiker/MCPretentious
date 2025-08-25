@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+## [0.2.0] - 2025-08-25
+
+### Added
 - New layered screenshot format for `mcpretentious-screenshot` tool with configurable data layers
 - Support for viewport limiting with `region` and `aroundCursor` parameters
 - Individual style layers (`bold`, `italic`, `underline`) in addition to combined `styles` layer
@@ -24,7 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Screenshot output size issue that exceeded 25,000 token MCP limit
-
 ## [0.1.5] - 2025-08-25
 
 ### Fixed
