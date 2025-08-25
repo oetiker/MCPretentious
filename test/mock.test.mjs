@@ -136,15 +136,15 @@ describe('MCPretentious Tests with Real Server', () => {
   });
   
   describe('Input Validation', () => {
-    it('should reject invalid terminal ID format', async () => {
+    it('should handle non-existent terminal ID', async () => {
       const result = await client.callTool({
         name: 'mcpretentious-read',
         arguments: {
-          terminalId: 'invalid-format'
+          terminalId: 'non-existent-terminal-id'
         }
       });
       
-      assert.ok(result.content[0].text.includes('Invalid terminal ID format'), 'Should return error for invalid ID format');
+      assert.ok(result.content[0].text.includes('Terminal not found'), 'Should return error for non-existent terminal');
     });
     
     it('should reject out-of-range ASCII codes', async () => {
@@ -152,7 +152,7 @@ describe('MCPretentious Tests with Real Server', () => {
         await client.callTool({
           name: 'mcpretentious-type',
           arguments: {
-            terminalId: 'iterm-12345-1',
+            terminalId: 'mock-session-uuid-1',
             input: [256] // Out of range
           }
         });
@@ -167,7 +167,7 @@ describe('MCPretentious Tests with Real Server', () => {
         await client.callTool({
           name: 'mcpretentious-type',
           arguments: {
-            terminalId: 'iterm-12345-1',
+            terminalId: 'mock-session-uuid-1',
             input: [-1] // Negative
           }
         });
@@ -181,7 +181,7 @@ describe('MCPretentious Tests with Real Server', () => {
       const result = await client.callTool({
         name: 'mcpretentious-type',
         arguments: {
-          terminalId: 'iterm-12345-1',
+          terminalId: 'mock-session-uuid-1',
           input: [{ key: 'nonexistent-key' }]
         }
       });
@@ -194,7 +194,7 @@ describe('MCPretentious Tests with Real Server', () => {
       const result = await client.callTool({
         name: 'mcpretentious-type',
         arguments: {
-          terminalId: 'iterm-12345-1',
+          terminalId: 'mock-session-uuid-1',
           input: []
         }
       });
@@ -202,15 +202,15 @@ describe('MCPretentious Tests with Real Server', () => {
       assert.ok(result.content[0].text.includes('Empty sequence'), 'Should handle empty input gracefully');
     });
     
-    it('should handle malformed terminal ID in close', async () => {
+    it('should handle non-existent terminal ID in close', async () => {
       const result = await client.callTool({
         name: 'mcpretentious-close',
         arguments: {
-          terminalId: 'not-a-valid-id'
+          terminalId: 'non-existent-uuid'
         }
       });
       
-      assert.ok(result.content[0].text.includes('Invalid terminal ID format'), 'Should validate terminal ID format');
+      assert.ok(result.content[0].text.includes('Terminal not found'), 'Should handle non-existent terminal');
     });
   });
   
@@ -228,7 +228,7 @@ describe('MCPretentious Tests with Real Server', () => {
       const result = await client.callTool({
         name: 'mcpretentious-read',
         arguments: {
-          terminalId: 'iterm-99999-99'
+          terminalId: 'mock-session-uuid-2'
         }
       });
       
@@ -244,7 +244,7 @@ describe('MCPretentious Tests with Real Server', () => {
       const result = await client.callTool({
         name: 'mcpretentious-type',
         arguments: {
-          terminalId: 'iterm-12345-1',
+          terminalId: 'mock-session-uuid-1',
           input: [
             'text',
             65,

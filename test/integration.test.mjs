@@ -17,6 +17,13 @@ const VERBOSE = process.env.VERBOSE === 'true';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Helper to extract terminal ID (UUID) from response
+function extractTerminalId(responseText) {
+  // Match UUID pattern
+  const match = responseText.match(/([A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12})/i);
+  return match ? match[1] : null;
+}
+
 // Check if iTerm2 is installed
 async function isITermInstalled() {
   try {
@@ -106,7 +113,7 @@ describe('iTerm2 Safe Integration Tests (Echo Only)', { skip: !shouldRun }, () =
         name: 'mcpretentious-open',
         arguments: {}
       });
-      testTerminalId = result.content[0].text.match(/iterm-\d+-\d+/)[0];
+      testTerminalId = extractTerminalId(result.content[0].text);
       openTerminals.push(testTerminalId);
       
       // Wait for terminal to be ready
@@ -301,7 +308,7 @@ describe('iTerm2 Safe Integration Tests (Echo Only)', { skip: !shouldRun }, () =
         name: 'mcpretentious-open',
         arguments: {}
       });
-      testTerminalId = result.content[0].text.match(/iterm-\d+-\d+/)[0];
+      testTerminalId = extractTerminalId(result.content[0].text);
       openTerminals.push(testTerminalId);
       await new Promise(resolve => setTimeout(resolve, 300));
     });
@@ -436,7 +443,7 @@ describe('iTerm2 Safe Integration Tests (Echo Only)', { skip: !shouldRun }, () =
         name: 'mcpretentious-open',
         arguments: {}
       });
-      testTerminalId = result.content[0].text.match(/iterm-\d+-\d+/)[0];
+      testTerminalId = extractTerminalId(result.content[0].text);
       openTerminals.push(testTerminalId);
       await new Promise(resolve => setTimeout(resolve, 300));
     });
@@ -578,7 +585,7 @@ EOF`;
         name: 'mcpretentious-open',
         arguments: {}
       });
-      const terminal1 = result1.content[0].text.match(/iterm-\d+-\d+/)[0];
+      const terminal1 = extractTerminalId(result1.content[0].text);
       openTerminals.push(terminal1);
       
       // Open second terminal  
@@ -586,7 +593,7 @@ EOF`;
         name: 'mcpretentious-open',
         arguments: {}
       });
-      const terminal2 = result2.content[0].text.match(/iterm-\d+-\d+/)[0];
+      const terminal2 = extractTerminalId(result2.content[0].text);
       openTerminals.push(terminal2);
       
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -655,7 +662,7 @@ EOF`;
         }
       });
       
-      const terminalId = result.content[0].text.match(/iterm-\d+-\d+/)[0];
+      const terminalId = extractTerminalId(result.content[0].text);
       openTerminals.push(terminalId);
       
       // Verify it mentions the size
@@ -675,7 +682,7 @@ EOF`;
         name: 'mcpretentious-open',
         arguments: {}
       });
-      const terminalId = openResult.content[0].text.match(/iterm-\d+-\d+/)[0];
+      const terminalId = extractTerminalId(openResult.content[0].text);
       openTerminals.push(terminalId);
       
       // Wait for terminal to be ready
@@ -712,7 +719,7 @@ EOF`;
         name: 'mcpretentious-open',
         arguments: {}
       });
-      const terminalId = openResult.content[0].text.match(/iterm-\d+-\d+/)[0];
+      const terminalId = extractTerminalId(openResult.content[0].text);
       openTerminals.push(terminalId);
       
       // Wait for terminal to be ready
@@ -766,7 +773,7 @@ EOF`;
         name: 'mcpretentious-open',
         arguments: {}
       });
-      const terminalId = openResult.content[0].text.match(/iterm-\d+-\d+/)[0];
+      const terminalId = extractTerminalId(openResult.content[0].text);
       openTerminals.push(terminalId);
       
       // Try to resize with edge case dimensions (minimum valid values)
@@ -799,7 +806,7 @@ EOF`;
         name: 'mcpretentious-open',
         arguments: {}
       });
-      testTerminalId = result.content[0].text.match(/iterm-\d+-\d+/)[0];
+      testTerminalId = extractTerminalId(result.content[0].text);
       openTerminals.push(testTerminalId);
       await new Promise(resolve => setTimeout(resolve, 300));
     });

@@ -19,9 +19,7 @@ import {
   TERMINAL_ID_FORMAT
 } from "./lib/terminal-utils.js";
 
-// Session to window/tab mapping for terminal IDs
-const sessionToTerminalMap = new Map();
-const terminalToSessionMap = new Map();
+// No longer need session mappings - using UUID directly as terminal ID
 
 // Terminal key mappings
 const TERMINAL_KEY_MAP = {
@@ -72,11 +70,22 @@ const server = new McpServer({
 
 // Helper function to handle terminal operations with session
 async function withTerminalSession(terminalId, operation) {
-  const result = getSessionForTerminal(terminalId, terminalToSessionMap);
-  if (result.error) return result.error;
+  // Terminal ID is now the session ID directly
+  if (!terminalId) {
+    return errorResponse("Terminal ID is required");
+  }
   
   const client = await getClient();
-  return operation(client, result.sessionId);
+  
+  // Verify the session exists
+  const sessions = await client.listSessions();
+  const sessionExists = sessions.some(s => s.uniqueIdentifier === terminalId);
+  
+  if (!sessionExists) {
+    return errorResponse(`Terminal not found: ${terminalId}`);
+  }
+  
+  return operation(client, terminalId);
 }
 
 // === Tool Handlers ===
@@ -98,13 +107,8 @@ server.tool(
         throw new Error("Failed to create new terminal session");
       }
       
-      // Generate terminal ID
-      const terminalCount = terminalToSessionMap.size + 1;
-      const terminalId = generateTerminalId(terminalCount, 1);
-      
-      // Store mappings
-      sessionToTerminalMap.set(sessionId, terminalId);
-      terminalToSessionMap.set(terminalId, sessionId);
+      // Use session UUID directly as terminal ID
+      const terminalId = sessionId;
       
       // Resize if dimensions were specified
       if (columns || rows) {
@@ -265,8 +269,6 @@ server.tool(
         const success = await client.closeSession(sessionId, true);
         
         if (success) {
-          terminalToSessionMap.delete(terminalId);
-          sessionToTerminalMap.delete(sessionId);
           return successResponse(`Terminal ${terminalId} closed`);
         }
         
@@ -289,23 +291,20 @@ server.tool(
       const windowMap = new Map();
       
       for (const session of sessions) {
-        const parsed = parseSessionIdentifier(session.uniqueIdentifier);
-        if (parsed) {
-          const { windowId, tabIndex } = parsed;
-          
+        // Use the session UUID directly as the terminal ID
+        const terminalId = session.uniqueIdentifier;
+        const windowId = session.windowId;
+        const tabId = session.tabId;
+        
+        if (windowId) {
           if (!windowMap.has(windowId)) {
             windowMap.set(windowId, []);
           }
           
-          const terminalId = generateTerminalId(windowId, tabIndex);
-          
-          // Update mappings
-          sessionToTerminalMap.set(session.uniqueIdentifier, terminalId);
-          terminalToSessionMap.set(terminalId, session.uniqueIdentifier);
-          
+          // No need for mapping - terminal ID IS the session ID
           windowMap.get(windowId).push({
             terminalId,
-            tabIndex,
+            tabIndex: tabId,
             sessionId: session.uniqueIdentifier
           });
         }
