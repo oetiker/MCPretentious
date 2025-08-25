@@ -28,7 +28,7 @@ jobs:
       run: npm ci
     
     - name: Run unit tests
-      run: npm test
+      run: NODE_ENV=test npm test
     
     - name: Check if iTerm2 is available
       id: check-iterm
