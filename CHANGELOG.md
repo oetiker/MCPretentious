@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+- Screenshot dimensions now correctly account for iTerm2's grid_size being 1 less than actual content dimensions (width + 1, height + 1)
+- Fixed screenshot edge capture to include rightmost column and bottom row of terminal content
 
 ## [0.2.3] - 2025-08-25
 

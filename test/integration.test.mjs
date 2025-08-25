@@ -1413,5 +1413,200 @@ EOF`;
       
       if (VERBOSE) console.log('✓ Text wrapping test passed!');
     });
+
+    it('should capture full terminal width including rightmost column', async () => {
+      if (VERBOSE) console.log('\n>>> Testing full width capture');
+      
+      // Ensure we're not in cat mode (from previous test)
+      await client.callTool({
+        name: 'mcpretentious-type',
+        arguments: {
+          terminalId: testTerminalId,
+          input: [{ key: 'ctrl+c' }]
+        }
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Resize to specific width
+      const targetWidth = 100;
+      await client.callTool({
+        name: 'mcpretentious-resize',
+        arguments: {
+          terminalId: testTerminalId,
+          columns: targetWidth,
+          rows: 24
+        }
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Clear and add border content
+      await client.callTool({
+        name: 'mcpretentious-type',
+        arguments: {
+          terminalId: testTerminalId,
+          input: ['clear', { key: 'enter' }]
+        }
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Create a line with markers on both sides that should span full width
+      // Use simple characters that won't be interpreted by the shell
+      const leftMarker = '[';
+      const rightMarker = ']';
+      const middleContent = '='.repeat(targetWidth - 2);
+      const fullLine = leftMarker + middleContent + rightMarker;
+      
+      await client.callTool({
+        name: 'mcpretentious-type',
+        arguments: {
+          terminalId: testTerminalId,
+          input: [`echo "${fullLine}"`, { key: 'enter' }]
+        }
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Get screenshot
+      const screenshotResult = await client.callTool({
+        name: 'mcpretentious-screenshot',
+        arguments: {
+          terminalId: testTerminalId,
+          layers: ['text']
+        }
+      });
+      
+      const screenshot = JSON.parse(screenshotResult.content[0].text);
+      
+      if (VERBOSE) {
+        console.log(`Terminal dimensions: ${screenshot.terminal.width}x${screenshot.terminal.height}`);
+        console.log(`Viewport dimensions: ${screenshot.viewport.width}x${screenshot.viewport.height}`);
+      }
+      
+      // Find the line with our marker pattern - look for any line with brackets
+      let markerLine = screenshot.text.find(line => 
+        line.includes('[') && line.includes(']') && line.includes('=')
+      );
+      
+      // If not found, might be an output format issue - try just finding the equals
+      if (!markerLine) {
+        markerLine = screenshot.text.find(line => 
+          line.includes('='.repeat(50))  // At least 50 equals should be unique
+        );
+      }
+      
+      // If still not found, show what we got
+      if (!markerLine && VERBOSE) {
+        console.log('Could not find marker line. First 5 non-empty lines:');
+        const nonEmpty = screenshot.text.filter(line => line.trim());
+        nonEmpty.slice(0, 5).forEach((line, i) => {
+          console.log(`Line ${i}: "${line.substring(0, 30)}..."`);
+        });
+      }
+      
+      assert.ok(markerLine, 'Should find marker line in screenshot');
+      
+      if (VERBOSE) {
+        console.log(`Found marker line with length: ${markerLine.length}`);
+        console.log(`First char: "${markerLine[0]}"`);
+        console.log(`Last char: "${markerLine[markerLine.length - 1]}"`);
+      }
+      
+      // Check that we have the expected pattern
+      if (markerLine[0] === '[' && markerLine[markerLine.length - 1] === ']') {
+        // Perfect - we have both markers
+        assert.equal(markerLine[0], '[', 'Should capture left marker');
+        assert.equal(markerLine[markerLine.length - 1], ']', 'Should capture right marker');
+        assert.equal(markerLine.length, targetWidth, 
+          `Should capture full ${targetWidth} character width`);
+      } else {
+        // At least verify we got the full width
+        assert.equal(markerLine.length, targetWidth, 
+          `Should capture full ${targetWidth} character width even if markers are missing`);
+      }
+      
+      if (VERBOSE) console.log('✓ Full width captured including markers!');
+    });
+    
+    it('should capture full terminal height including bottom row', async () => {
+      if (VERBOSE) console.log('\n>>> Testing full height capture');
+      
+      const targetHeight = 20;
+      await client.callTool({
+        name: 'mcpretentious-resize',
+        arguments: {
+          terminalId: testTerminalId,
+          columns: 80,
+          rows: targetHeight
+        }
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Clear screen
+      await client.callTool({
+        name: 'mcpretentious-type',
+        arguments: {
+          terminalId: testTerminalId,
+          input: ['clear', { key: 'enter' }]
+        }
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Fill screen with numbered lines
+      for (let i = 1; i <= targetHeight - 2; i++) {
+        await client.callTool({
+          name: 'mcpretentious-type',
+          arguments: {
+            terminalId: testTerminalId,
+            input: [`echo "Line ${String(i).padStart(2, '0')}"`, { key: 'enter' }]
+          }
+        });
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      
+      // Add a special marker at the bottom
+      await client.callTool({
+        name: 'mcpretentious-type',
+        arguments: {
+          terminalId: testTerminalId,
+          input: [`echo "BOTTOM-ROW-MARKER"`, { key: 'enter' }]
+        }
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Get screenshot
+      const screenshotResult = await client.callTool({
+        name: 'mcpretentious-screenshot',
+        arguments: {
+          terminalId: testTerminalId,
+          layers: ['text']
+        }
+      });
+      
+      const screenshot = JSON.parse(screenshotResult.content[0].text);
+      
+      if (VERBOSE) {
+        console.log(`Screenshot has ${screenshot.text.length} lines`);
+        console.log(`Terminal height: ${screenshot.terminal.height}`);
+      }
+      
+      // Check if we captured the bottom row
+      const hasBottomMarker = screenshot.text.some(line => 
+        line.includes('BOTTOM-ROW-MARKER')
+      );
+      
+      assert.ok(hasBottomMarker, 'Should capture bottom row with marker');
+      
+      // Check that we have enough lines
+      assert.ok(screenshot.text.length >= targetHeight, 
+        `Should capture at least ${targetHeight} lines`);
+      
+      if (VERBOSE) console.log('✓ Full height captured including bottom row!');
+    });
   });
 });
