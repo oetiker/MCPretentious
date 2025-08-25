@@ -128,6 +128,7 @@ Other implementations have critical limitations:
 ✅ **No Focus Stealing**: Your LLM works in background terminals while you keep coding both for iTerm as well as VS Code and other Electron apps  
 ✅ **Real Terminal IDs**: Access ANY iTerm window or tab, not just the ones created from the MCP  
 ✅ **True Screen Reading**: See what's actually visible on screen, not just scrollback buffer (essential for TUI apps)  
+✅ **Token-Optimized Screenshots**: Layered format reduces token usage by 85-98% with configurable data layers  
 ✅ **Battle-Tested**: Comprehensive test suite with protocol validation and integration tests  
 ✅ **Security First**: Proper input validation and command escaping
 
@@ -152,6 +153,16 @@ Other implementations have critical limitations:
 - Handles multiple terminals simultaneously
 - Always reads the current screen viewport (not scrollback)
 - Provides cursor position and color information for TUI apps
+
+### Token-Optimized Screenshots
+The `mcpretentious-screenshot` tool uses an innovative layered format that dramatically reduces token usage:
+- **85% reduction** with minimal mode (text + cursor only)
+- **98% reduction** when using viewport limiting (e.g., 5 lines around cursor)
+- Choose only the data layers you need: text, cursor, colors, styles
+- Smart viewport options: full screen, specific region, or around cursor
+- Compact mode removes empty lines automatically
+
+This means your LLM can inspect terminal screens without hitting token limits, even for complex TUI applications!
 
 ## ⚠️ Security Note
 

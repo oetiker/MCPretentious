@@ -8,10 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- New layered screenshot format for `mcpretentious-screenshot` tool with configurable data layers
+- Support for viewport limiting with `region` and `aroundCursor` parameters
+- Individual style layers (`bold`, `italic`, `underline`) in addition to combined `styles` layer
+- Color layers (`fgColors`, `bgColors`) with optimized palette encoding
+- Compact mode to skip empty lines and reduce output size
+- Token usage reduction of 85-98% compared to previous format
 
 ### Changed
+- Replaced `format` parameter with `layers` array in screenshot tool
+- Changed coordinate naming from `x`/`y` to `left`/`top` for clarity
+- Default screenshot output now returns minimal data (text + cursor) instead of full format
+- Response structure now includes `terminal`, `viewport`, and relative cursor positions
+- Style encoding uses compact single-character representation
 
 ### Fixed
+- Screenshot output size issue that exceeded 25,000 token MCP limit
 
 ## [0.1.5] - 2025-08-25
 

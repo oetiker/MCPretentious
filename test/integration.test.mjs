@@ -814,7 +814,7 @@ EOF`;
       }
     });
     
-    it('should get screenshot with full format by default', async () => {
+    it('should get minimal screenshot by default (text + cursor)', async () => {
       // Send some text to have content
       await client.callTool({
         name: 'mcpretentious-type',
@@ -826,7 +826,7 @@ EOF`;
       
       await new Promise(resolve => setTimeout(resolve, 200));
       
-      // Get screenshot without format specified (should default to full)
+      // Get screenshot without layers specified (should default to text + cursor)
       const result = await client.callTool({
         name: 'mcpretentious-screenshot',
         arguments: { terminalId: testTerminalId }
@@ -834,36 +834,70 @@ EOF`;
       
       const screenshot = JSON.parse(result.content[0].text);
       
-      // Verify full format structure
-      assert.ok(screenshot.cursor, 'Should have cursor');
-      assert.ok(screenshot.dimensions, 'Should have dimensions');
-      assert.ok(Array.isArray(screenshot.lines), 'Should have lines array');
-      assert.ok(screenshot.lines.length > 0, 'Should have at least one line');
+      // Verify new layered format structure
+      assert.ok(screenshot.terminal, 'Should have terminal info');
+      assert.ok(screenshot.terminal.width, 'Should have terminal width');
+      assert.ok(screenshot.terminal.height, 'Should have terminal height');
+      assert.ok(screenshot.viewport, 'Should have viewport info');
+      assert.ok(screenshot.viewport.mode, 'Should have viewport mode');
+      assert.ok(screenshot.cursor, 'Should have cursor info');
+      assert.ok(typeof screenshot.cursor.left === 'number', 'Cursor should have left position');
+      assert.ok(typeof screenshot.cursor.top === 'number', 'Cursor should have top position');
+      assert.ok(Array.isArray(screenshot.text), 'Should have text array');
       
-      // Check line structure
-      const firstLine = screenshot.lines[0];
-      assert.ok(typeof firstLine.number === 'number', 'Line should have number');
-      assert.ok(typeof firstLine.text === 'string', 'Line should have text');
-      assert.ok(Array.isArray(firstLine.styles), 'Line should have styles array');
+      // Should NOT have style/color layers by default
+      assert.ok(!screenshot.styles, 'Should not have styles by default');
+      assert.ok(!screenshot.fgColors, 'Should not have fgColors by default');
+      assert.ok(!screenshot.bgColors, 'Should not have bgColors by default');
     });
     
-    it('should get cursor-only format', async () => {
+    it('should get screenshot with style layers', async () => {
+      // Send text with styles
+      await client.callTool({
+        name: 'mcpretentious-type',
+        arguments: {
+          terminalId: testTerminalId,
+          input: ['echo -e "\\033[1mBold\\033[0m \\033[3mItalic\\033[0m"', { key: 'enter' }]
+        }
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
       const result = await client.callTool({
         name: 'mcpretentious-screenshot',
         arguments: {
           terminalId: testTerminalId,
-          format: 'cursor-only'
+          layers: ['text', 'cursor', 'styles']
         }
       });
       
       const data = JSON.parse(result.content[0].text);
       
-      // Should only have cursor, nothing else
-      assert.ok(data.cursor, 'Should have cursor');
-      assert.ok(typeof data.cursor.x === 'number', 'Cursor should have x');
-      assert.ok(typeof data.cursor.y === 'number', 'Cursor should have y');
-      assert.ok(!data.dimensions, 'Should not have dimensions in cursor-only mode');
-      assert.ok(!data.lines, 'Should not have lines in cursor-only mode');
+      // Should have styles layer and legend
+      assert.ok(data.styles, 'Should have styles layer');
+      assert.ok(Array.isArray(data.styles), 'Styles should be an array');
+      assert.ok(data.styleLegend, 'Should have style legend');
+      assert.ok(data.styleLegend['b'] === 'bold', 'Legend should define bold');
+    });
+    
+    it('should get screenshot with viewport region', async () => {
+      const result = await client.callTool({
+        name: 'mcpretentious-screenshot',
+        arguments: {
+          terminalId: testTerminalId,
+          layers: ['text'],
+          region: { left: 0, top: 0, width: 40, height: 5 }
+        }
+      });
+      
+      const data = JSON.parse(result.content[0].text);
+      
+      // Verify viewport settings
+      assert.ok(data.viewport.mode === 'region', 'Viewport mode should be region');
+      assert.ok(data.viewport.width === 40, 'Viewport width should be 40');
+      assert.ok(data.viewport.height === 5, 'Viewport height should be 5');
+      assert.ok(data.text.length <= 5, 'Should have at most 5 lines');
+      assert.ok(data.text[0].length <= 40, 'Lines should be at most 40 chars');
     });
   });
 });
