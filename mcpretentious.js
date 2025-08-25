@@ -202,11 +202,12 @@ server.tool(
           y: typeof screen.cursor?.y === 'object' ? (screen.cursor.y.low || screen.cursor.y) : (screen.cursor?.y || 0)
         };
         
-        // Get actual terminal dimensions
+        // Get terminal dimensions
+        // iTerm2's grid_size is typically 1 less than actual content dimensions
         const gridSize = await client.getProperty(sessionId, 'grid_size');
         const terminal = {
-          width: gridSize.width,
-          height: gridSize.height
+          width: gridSize.width + 1,
+          height: gridSize.height + 1
         };
         
         // Calculate viewport
@@ -398,13 +399,14 @@ server.tool(
       return safeExecute(async () => {
         const info = await client.getSessionInfo(sessionId);
         
+        // iTerm2's grid_size is typically 1 less than actual content dimensions
         return successResponse(JSON.stringify({
           terminalId,
           sessionId: info.sessionId,
           windowId: info.windowId,
           dimensions: {
-            columns: info.dimensions.columns,
-            rows: info.dimensions.rows
+            columns: info.dimensions.columns + 1,
+            rows: info.dimensions.rows + 1
           }
         }, null, 2));
       }, "Failed to get terminal info");

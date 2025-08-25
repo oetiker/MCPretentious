@@ -1138,16 +1138,26 @@ EOF`;
           console.log(`Expected dimensions: ${size.columns}x${size.rows}`);
         }
         
-        // Verify the reported dimensions are close to what we set
-        // Note: iTerm2 may report slightly different dimensions than what we set
-        // This is normal terminal behavior (e.g., 119 when we set 120)
-        const columnDiff = Math.abs(infoData.dimensions.columns - size.columns);
-        const rowDiff = Math.abs(infoData.dimensions.rows - size.rows);
+        // Verify the reported dimensions match exactly what we set
+        assert.equal(infoData.dimensions.columns, size.columns, 
+          `Columns should be exactly ${size.columns}, got ${infoData.dimensions.columns}`);
+        assert.equal(infoData.dimensions.rows, size.rows, 
+          `Rows should be exactly ${size.rows}, got ${infoData.dimensions.rows}`);
         
-        assert.ok(columnDiff <= 1, 
-          `Columns should be within 1 of ${size.columns}, got ${infoData.dimensions.columns} (diff: ${columnDiff})`);
-        assert.ok(rowDiff <= 1, 
-          `Rows should be within 1 of ${size.rows}, got ${infoData.dimensions.rows} (diff: ${rowDiff})`);
+        // Also verify screenshot reports the same dimensions
+        const screenshotResult = await client.callTool({
+          name: 'mcpretentious-screenshot',
+          arguments: {
+            terminalId: testTerminalId,
+            layers: ['text']
+          }
+        });
+        
+        const screenshotData = JSON.parse(screenshotResult.content[0].text);
+        assert.equal(screenshotData.terminal.width, size.columns,
+          `Screenshot width should be exactly ${size.columns}, got ${screenshotData.terminal.width}`);
+        assert.equal(screenshotData.terminal.height, size.rows,
+          `Screenshot height should be exactly ${size.rows}, got ${screenshotData.terminal.height}`);
         
         // Exit cat for next iteration
         await client.callTool({
