@@ -524,46 +524,50 @@ EOF`;
       // Wait for output to complete
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Test cursor position only
+      // Test cursor position with minimal layers
       const cursorResult = await client.callTool({
         name: 'mcpretentious-screenshot',
         arguments: {
           terminalId: testTerminalId,
-          format: 'cursor-only'
+          layers: ['cursor']
         }
       });
       
       const cursorData = JSON.parse(cursorResult.content[0].text);
       assert.ok(cursorData.cursor, 'Should have cursor position');
-      assert.ok(typeof cursorData.cursor.x === 'number', 'Cursor x should be a number');
-      assert.ok(typeof cursorData.cursor.y === 'number', 'Cursor y should be a number');
+      assert.ok(typeof cursorData.cursor.left === 'number', 'Cursor left should be a number');
+      assert.ok(typeof cursorData.cursor.top === 'number', 'Cursor top should be a number');
       
-      // Test full screen info
+      // Test with text and styles
       const screenResult = await client.callTool({
         name: 'mcpretentious-screenshot',
         arguments: {
           terminalId: testTerminalId,
-          format: 'full'
+          layers: ['text', 'cursor', 'styles', 'fgColors']
         }
       });
       
       const screenData = JSON.parse(screenResult.content[0].text);
-      assert.ok(screenData.cursor, 'Should have cursor in full format');
-      assert.ok(screenData.dimensions, 'Should have dimensions');
-      assert.ok(Array.isArray(screenData.lines), 'Should have lines array');
+      assert.ok(screenData.cursor, 'Should have cursor');
+      assert.ok(screenData.terminal, 'Should have terminal info');
+      assert.ok(screenData.viewport, 'Should have viewport info');
+      assert.ok(Array.isArray(screenData.text), 'Should have text array');
       
       // Check if we can see styled output
-      const hasStyledText = screenData.lines.some(line => 
-        line.styles && line.styles.length > 0
+      const hasStyledText = screenData.styles && screenData.styles.some(line => 
+        line && line !== '.' && line.includes('b')
       );
       
       if (VERBOSE) {
-        console.log('Screen info sample:', JSON.stringify(screenData.lines[0], null, 2));
+        console.log('Screen info sample:', JSON.stringify({
+          text: screenData.text?.[0],
+          styles: screenData.styles?.[0]
+        }, null, 2));
       }
       
       // Note: Color detection might not work in all terminal configurations
       // So we just check that the structure is correct
-      assert.ok(screenData.lines.length > 0, 'Should have screen lines');
+      assert.ok(screenData.text.length > 0, 'Should have screen text');
     });
   });
   
