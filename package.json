@@ -25,7 +25,7 @@
     "claude-code"
   ],
   "author": "Tobi Oetiker",
-  "license": "ISC",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/oetiker/MCPretentious.git"
@@ -44,12 +44,14 @@
     "node": ">=20.0.0"
   },
   "files": [
-    "index.js",
+    "mcpretentious.js",
+    "mcpretentious-test.js",
     "lib/",
     "proto/",
     "README.md",
     "LICENSE",
     "CHANGELOG.md",
+    "API.md",
     "test/"
   ]
 }
