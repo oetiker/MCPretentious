@@ -1032,4 +1032,386 @@ EOF`;
       assert.ok(!hasEmpty, 'Compact mode should have no empty lines');
     });
   });
+
+  describe('Terminal Dimension Reporting', () => {
+    let testTerminalId;
+    
+    before(async () => {
+      const result = await client.callTool({
+        name: 'mcpretentious-open',
+        arguments: {}
+      });
+      testTerminalId = extractTerminalId(result.content[0].text);
+      openTerminals.push(testTerminalId);
+      await new Promise(resolve => setTimeout(resolve, 500));
+    });
+    
+    after(async () => {
+      if (testTerminalId) {
+        try {
+          await client.callTool({
+            name: 'mcpretentious-close',
+            arguments: { terminalId: testTerminalId }
+          });
+          openTerminals = openTerminals.filter(id => id !== testTerminalId);
+        } catch (error) {
+          console.error(`Failed to close terminal ${testTerminalId}:`, error.message);
+        }
+      }
+    });
+    
+    it('should report actual terminal dimensions after resize', async () => {
+      if (VERBOSE) console.log('\n>>> Testing dimension reporting');
+      
+      // Test different sizes
+      const testSizes = [
+        { columns: 100, rows: 25 },
+        { columns: 132, rows: 30 },
+        { columns: 80, rows: 24 }
+      ];
+      
+      for (const size of testSizes) {
+        if (VERBOSE) console.log(`\n=== Testing ${size.columns}x${size.rows} ===`);
+        
+        // Resize terminal
+        const resizeResult = await client.callTool({
+          name: 'mcpretentious-resize',
+          arguments: {
+            terminalId: testTerminalId,
+            columns: size.columns,
+            rows: size.rows
+          }
+        });
+        
+        if (VERBOSE) console.log('Resize result:', resizeResult.content[0].text);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Add content to establish terminal width
+        await client.callTool({
+          name: 'mcpretentious-type',
+          arguments: {
+            terminalId: testTerminalId,
+            input: ['clear', { key: 'enter' }]
+          }
+        });
+        
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        await client.callTool({
+          name: 'mcpretentious-type',
+          arguments: {
+            terminalId: testTerminalId,
+            input: ['cat', { key: 'enter' }]
+          }
+        });
+        
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Add a line exactly matching the terminal width
+        const testLine = '0'.repeat(size.columns);
+        
+        await client.callTool({
+          name: 'mcpretentious-type',
+          arguments: {
+            terminalId: testTerminalId,
+            input: [testLine, { key: 'enter' }]
+          }
+        });
+        
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Check what mcpretentious-info reports
+        const infoResult = await client.callTool({
+          name: 'mcpretentious-info',
+          arguments: {
+            terminalId: testTerminalId
+          }
+        });
+        
+        if (VERBOSE) console.log('Info result:', infoResult.content[0].text);
+        
+        // Parse the JSON response
+        const infoData = JSON.parse(infoResult.content[0].text);
+        
+        if (VERBOSE) {
+          console.log(`Reported dimensions: ${infoData.dimensions.columns}x${infoData.dimensions.rows}`);
+          console.log(`Expected dimensions: ${size.columns}x${size.rows}`);
+        }
+        
+        // Verify the reported dimensions are close to what we set
+        // Note: iTerm2 may report slightly different dimensions than what we set
+        // This is normal terminal behavior (e.g., 119 when we set 120)
+        const columnDiff = Math.abs(infoData.dimensions.columns - size.columns);
+        const rowDiff = Math.abs(infoData.dimensions.rows - size.rows);
+        
+        assert.ok(columnDiff <= 1, 
+          `Columns should be within 1 of ${size.columns}, got ${infoData.dimensions.columns} (diff: ${columnDiff})`);
+        assert.ok(rowDiff <= 1, 
+          `Rows should be within 1 of ${size.rows}, got ${infoData.dimensions.rows} (diff: ${rowDiff})`);
+        
+        // Exit cat for next iteration
+        await client.callTool({
+          name: 'mcpretentious-type',
+          arguments: {
+            terminalId: testTerminalId,
+            input: [{ key: 'ctrl+d' }]
+          }
+        });
+        
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+      
+      if (VERBOSE) console.log('\n✓ All dimension reporting tests passed!');
+    });
+
+    it('should handle wide terminal screen capture (132 columns)', async () => {
+      if (VERBOSE) console.log('\n>>> Testing wide terminal capture');
+      
+      // Resize to 132 columns
+      await client.callTool({
+        name: 'mcpretentious-resize',
+        arguments: {
+          terminalId: testTerminalId,
+          columns: 132,
+          rows: 24
+        }
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Clear screen and start cat for clean output
+      await client.callTool({
+        name: 'mcpretentious-type',
+        arguments: {
+          terminalId: testTerminalId,
+          input: ['clear', { key: 'enter' }]
+        }
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      await client.callTool({
+        name: 'mcpretentious-type',
+        arguments: {
+          terminalId: testTerminalId,
+          input: ['cat', { key: 'enter' }]
+        }
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Generate column markers for 132 columns
+      let markers = '';
+      for (let i = 0; i < 132; i++) {
+        if (i % 10 === 0) {
+          markers += (i / 10) % 10;
+        } else {
+          markers += (i % 10);
+        }
+      }
+      
+      // Type the column markers
+      await client.callTool({
+        name: 'mcpretentious-type',
+        arguments: {
+          terminalId: testTerminalId,
+          input: [markers, { key: 'enter' }]
+        }
+      });
+      
+      // Add a line of all A's
+      await client.callTool({
+        name: 'mcpretentious-type',
+        arguments: {
+          terminalId: testTerminalId,
+          input: ['A'.repeat(132), { key: 'enter' }]
+        }
+      });
+      
+      await client.callTool({
+        name: 'mcpretentious-type',
+        arguments: {
+          terminalId: testTerminalId,
+          input: ['END-WIDE-TEST', { key: 'enter' }]
+        }
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Read the screen
+      const readResult = await client.callTool({
+        name: 'mcpretentious-read',
+        arguments: {
+          terminalId: testTerminalId
+        }
+      });
+      
+      const output = readResult.content[0].text;
+      const lines = output.split('\n');
+      
+      if (VERBOSE) {
+        console.log('Wide terminal output lines:');
+        lines.forEach((line, i) => {
+          if (line.trim()) {
+            console.log(`Line ${i}: "${line.substring(0, 50)}..." (length: ${line.length})`);
+          }
+        });
+      }
+      
+      // Find the column marker line
+      const markerLine = lines.find(line => 
+        line.startsWith('0123456789') && line.length >= 130
+      );
+      
+      // Find the A line
+      const aLine = lines.find(line => 
+        line.startsWith('AAAAAAAAAA') && line.length >= 130
+      );
+      
+      if (markerLine) {
+        if (VERBOSE) console.log(`✓ Found column marker line with ${markerLine.length} characters`);
+        
+        // Check if we captured the full width (allowing for 1-character difference)
+        assert.ok(markerLine.length >= 131, `Should capture at least 131 columns. Got: ${markerLine.length}`);
+        
+        // Verify content at key positions
+        assert.equal(markerLine[0], '0', 'Position 0 should be "0"');
+        assert.equal(markerLine[10], '1', 'Position 10 should be "1"');
+        assert.equal(markerLine[50], '5', 'Position 50 should be "5"');
+        assert.equal(markerLine[100], '0', 'Position 100 should be "0"');
+        if (markerLine.length >= 131) {
+          assert.equal(markerLine[130], '3', 'Position 130 should be "3"');
+          assert.equal(markerLine[131], '1', 'Position 131 should be "1"');
+        }
+        
+        if (VERBOSE) console.log('✓ Column marker validation passed!');
+      } else {
+        assert.fail('Could not find column marker line in output');
+      }
+      
+      if (aLine) {
+        if (VERBOSE) console.log(`✓ Found A-line with ${aLine.length} characters`);
+        assert.ok(aLine.length >= 131, `A-line should be at least 131 columns`);
+        assert.ok(aLine.split('').every(c => c === 'A'), 'A-line should contain only A characters');
+        if (VERBOSE) console.log('✓ A-line validation passed!');
+      }
+      
+      // Check for end marker
+      assert.ok(output.includes('END-WIDE-TEST'), 'Should find end marker');
+      
+      // Exit cat
+      await client.callTool({
+        name: 'mcpretentious-type',
+        arguments: {
+          terminalId: testTerminalId,
+          input: [{ key: 'ctrl+d' }]
+        }
+      });
+      
+      if (VERBOSE) console.log('✓ Wide terminal capture test passed!');
+    });
+
+    it('should handle text wrapping at terminal width', async () => {
+      if (VERBOSE) console.log('\n>>> Testing text wrapping');
+      
+      // Set to a specific width for predictable wrapping
+      await client.callTool({
+        name: 'mcpretentious-resize',
+        arguments: {
+          terminalId: testTerminalId,
+          columns: 80,
+          rows: 24
+        }
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Clear and start cat
+      await client.callTool({
+        name: 'mcpretentious-type',
+        arguments: {
+          terminalId: testTerminalId,
+          input: ['clear', { key: 'enter' }]
+        }
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      await client.callTool({
+        name: 'mcpretentious-type',
+        arguments: {
+          terminalId: testTerminalId,
+          input: ['cat', { key: 'enter' }]
+        }
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Generate a long line that should wrap (90 characters for 80-column terminal)
+      const longText = 'B'.repeat(90);
+      
+      await client.callTool({
+        name: 'mcpretentious-type',
+        arguments: {
+          terminalId: testTerminalId,
+          input: [longText, { key: 'enter' }]
+        }
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      const readResult = await client.callTool({
+        name: 'mcpretentious-read',
+        arguments: {
+          terminalId: testTerminalId
+        }
+      });
+      
+      const output = readResult.content[0].text;
+      const lines = output.split('\n').filter(line => line.includes('BBB'));
+      
+      if (VERBOSE) {
+        console.log('Lines with "BBB":');
+        lines.forEach((line, i) => {
+          console.log(`Line ${i}: length=${line.length}, content="${line.substring(0, 20)}..."`);
+        });
+      }
+      
+      // Should have at least one line with B's
+      assert.ok(lines.length >= 1, 'Should have at least one line with text');
+      
+      // Check if we have wrapped lines
+      const bLines = lines.filter(line => line.match(/^B+$/));
+      if (bLines.length > 0) {
+        if (VERBOSE) console.log(`Found ${bLines.length} line(s) of B's`);
+        const firstBLine = bLines[0];
+        if (VERBOSE) console.log(`First B-line has ${firstBLine.length} characters`);
+        
+        // First line should be close to terminal width (within 1)
+        assert.ok(Math.abs(firstBLine.length - 80) <= 1, `First line should be close to 80 chars, got ${firstBLine.length}`);
+        
+        if (bLines.length > 1) {
+          const secondBLine = bLines[1];
+          if (VERBOSE) console.log(`Second B-line has ${secondBLine.length} characters (wrapped text)`);
+          assert.equal(secondBLine.length, 10, 'Second line should have the wrapped 10 characters');
+        }
+      } else {
+        // Fallback check
+        const firstLineLength = lines[0].length;
+        if (VERBOSE) console.log(`First line with B's has ${firstLineLength} characters`);
+        assert.ok(firstLineLength >= 70, `Line should be at least 70 chars. Got: ${firstLineLength}`);
+      }
+      
+      // Exit cat
+      await client.callTool({
+        name: 'mcpretentious-type',
+        arguments: {
+          terminalId: testTerminalId,
+          input: [{ key: 'ctrl+d' }]
+        }
+      });
+      
+      if (VERBOSE) console.log('✓ Text wrapping test passed!');
+    });
+  });
 });

@@ -202,10 +202,11 @@ server.tool(
           y: typeof screen.cursor?.y === 'object' ? (screen.cursor.y.low || screen.cursor.y) : (screen.cursor?.y || 0)
         };
         
-        // Calculate terminal dimensions
+        // Get actual terminal dimensions
+        const gridSize = await client.getProperty(sessionId, 'grid_size');
         const terminal = {
-          width: ITERM_DEFAULTS.COLUMNS,
-          height: screen.lines?.length || ITERM_DEFAULTS.ROWS
+          width: gridSize.width,
+          height: gridSize.height
         };
         
         // Calculate viewport

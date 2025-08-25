@@ -8,10 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- New `getProperty` method in iTerm2Client to query terminal properties directly from iTerm2 API
+- Integration tests for wide terminal support (132 columns) and dimension reporting accuracy
 
 ### Changed
 
 ### Fixed
+- Terminal dimension reporting now uses actual dimensions from iTerm2's `grid_size` property instead of hardcoded 80x24 defaults
+- `mcpretentious-info` now reports correct terminal dimensions
+- `mcpretentious-screenshot` now uses correct terminal width/height for viewport calculations
 
 ## [0.2.2] - 2025-08-25
 
