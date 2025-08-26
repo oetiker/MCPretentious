@@ -8,10 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **TMux backend support** - MCPretentious now works on Linux, BSD, and headless servers via tmux control mode
+- Backend abstraction layer supporting multiple terminal implementations
+- Auto-detection of available backends (iTerm2 on macOS, tmux everywhere)
+- Command-line options for backend selection (`--backend=auto|iterm|tmux|api`)
+- **API mode** (`--backend=api`) - Lets LLM choose backend per session when multiple backends available
+- Dynamic tool schema - `backend` parameter only shown to LLM when relevant (API mode with 2+ backends)
+- `MCP_TERMINAL_BACKEND` environment variable for default backend selection
+- ANSI escape sequence parser for tmux color and style support
+- Structured JSON screenshot format for tmux (matching iTerm2 API)
+- Cross-platform terminal control with unified API
+- Comprehensive error handling when no backends are available
+- Help option (`--help`) showing all available CLI arguments
 
 ### Changed
+- Complete architecture refactor to support multiple backends
+- Terminal IDs now use format `{backend}:{sessionId}` (e.g., `iterm:uuid`, `tmux:session-name`)
+- Main entry point now initializes backend manager before starting server
+- Tool descriptions updated to be backend-agnostic
+- Tools now registered after backend initialization for dynamic schemas
+- Package description updated to reflect cross-platform support
 
 ### Fixed
+- iTerm2 closeSession now properly converts windowId to string for protobuf
+
 
 ## [0.2.5] - 2025-08-25
 

@@ -3,20 +3,16 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { getClient } from "./lib/iterm2-client.js";
+import { parseArgs } from "util";
+import { backendManager } from "./lib/backend-manager.js";
+import { TerminalBackend } from "./lib/terminal-backend.js";
+import { TmuxBackend } from "./lib/tmux-backend.js";
 import { getCurrentFocus, restoreFocus } from "./lib/focus-manager.js";
 import { ITERM_DEFAULTS } from "./lib/constants.js";
 import {
-  generateTerminalId,
-  parseTerminalId,
-  isValidTerminalId,
   successResponse,
   errorResponse,
-  validateTerminalId,
-  getSessionForTerminal,
-  safeExecute,
-  parseSessionIdentifier,
-  TERMINAL_ID_FORMAT
+  safeExecute
 } from "./lib/terminal-utils.js";
 
 // No longer need session mappings - using UUID directly as terminal ID
@@ -70,80 +66,123 @@ const server = new McpServer({
 
 // Helper function to handle terminal operations with session
 async function withTerminalSession(terminalId, operation) {
-  // Terminal ID is now the session ID directly
+  // Check if any backends are available first
+  if (!backendManager.hasBackends()) {
+    return errorResponse(backendManager.getNoBackendError());
+  }
+  
   if (!terminalId) {
     return errorResponse("Terminal ID is required");
   }
   
-  const client = await getClient();
-  
-  // Verify the session exists
-  const sessions = await client.listSessions();
-  const sessionExists = sessions.some(s => s.uniqueIdentifier === terminalId);
+  // Check if session exists
+  const sessionExists = await backendManager.sessionExists(terminalId);
   
   if (!sessionExists) {
     return errorResponse(`Terminal not found: ${terminalId}`);
   }
   
-  return operation(client, terminalId);
+  return operation(terminalId);
 }
 
 // === Tool Handlers ===
 
-server.tool(
-  "mcpretentious-open", 
-  "Opens a new iTerm2 window and creates a tracked terminal session. Returns a terminal ID that can be used with other commands.",
-  {
+// Function to register tools after backend initialization
+function registerTools() {
+  // Build schema for mcpretentious-open based on current mode
+  const openToolSchema = {
     columns: z.number().min(ITERM_DEFAULTS.MIN_COLUMNS).max(ITERM_DEFAULTS.MAX_COLUMNS).optional().describe(`Initial width in columns (default: ${ITERM_DEFAULTS.COLUMNS})`),
-    rows: z.number().min(ITERM_DEFAULTS.MIN_ROWS).max(ITERM_DEFAULTS.MAX_ROWS).optional().describe(`Initial height in rows (default: ${ITERM_DEFAULTS.ROWS})`),
-  }, 
-  async ({ columns, rows }) => {
+    rows: z.number().min(ITERM_DEFAULTS.MIN_ROWS).max(ITERM_DEFAULTS.MAX_ROWS).optional().describe(`Initial height in rows (default: ${ITERM_DEFAULTS.ROWS})`)
+  };
+  
+  // Only add backend parameter if in API mode with multiple backends available
+  if (backendManager.isApiMode()) {
+    const availableBackends = backendManager.getAvailableBackends();
+    if (availableBackends.length > 1) {
+      // Only show backend option if there's actually a choice
+      openToolSchema.backend = z.enum(availableBackends)
+        .optional()
+        .describe(`Backend to use for this session. Options: ${availableBackends.map(b => `'${b}'`).join(', ')}. Default: ${availableBackends[0]}`);
+    }
+  }
+
+  server.tool(
+    "mcpretentious-open", 
+    "Opens a new terminal window and creates a tracked terminal session. Returns a terminal ID that can be used with other commands.",
+    openToolSchema,
+  async ({ columns, rows, backend }) => {
     return safeExecute(async () => {
-      const originalFocus = getCurrentFocus();
-      const client = await getClient();
+      // Check if any backends are available
+      if (!backendManager.hasBackends()) {
+        throw new Error(backendManager.getNoBackendError());
+      }
       
-      const sessionId = await client.createTab();
-      if (!sessionId) {
+      // Store focus before creating terminal (iTerm2 only)
+      const originalFocus = await getCurrentFocus();
+      
+      // Create terminal using backend manager
+      const sessionOptions = { columns, rows };
+      
+      // Add backend selection in API mode
+      if (backendManager.isApiMode()) {
+        if (backend) {
+          // Validate backend is available
+          const available = backendManager.getAvailableBackends();
+          if (!available.includes(backend)) {
+            throw new Error(`Backend '${backend}' is not available. Available backends: ${available.join(', ')}`);
+          }
+          sessionOptions.backend = backend;
+        } else {
+          // Use first available backend if not specified
+          const available = backendManager.getAvailableBackends();
+          if (available.length > 0) {
+            sessionOptions.backend = available[0];
+          }
+        }
+      } else if (backend) {
+        // Backend parameter provided but not in API mode
+        throw new Error('Backend selection is only available when server is started with --backend=api');
+      }
+      
+      const terminalId = await backendManager.createSession(sessionOptions);
+      
+      if (!terminalId) {
         throw new Error("Failed to create new terminal session");
       }
       
-      // Use session UUID directly as terminal ID
-      const terminalId = sessionId;
-      
-      // Resize if dimensions were specified
-      if (columns || rows) {
-        try {
-          await client.setSessionSize(sessionId, columns || ITERM_DEFAULTS.COLUMNS, rows || ITERM_DEFAULTS.ROWS);
-        } catch (resizeError) {
-          // Non-fatal: log but continue
-          console.warn(`Could not resize terminal: ${resizeError.message}`);
-        }
-      }
-      
-      // Restore focus
+      // Restore focus (iTerm2 only)
       if (originalFocus) {
         setTimeout(() => restoreFocus(originalFocus), 100);
       }
       
+      const terminalBackend = backendManager.getBackendForTerminal(terminalId);
+      const backendName = terminalBackend.getName();
       const sizeInfo = (columns || rows) 
         ? ` (${columns || ITERM_DEFAULTS.COLUMNS}×${rows || ITERM_DEFAULTS.ROWS})` 
         : '';
-      return successResponse(`Terminal opened with ID: ${terminalId}${sizeInfo}`);
+      
+      // Include available backends info in API mode
+      if (backendManager.isApiMode()) {
+        const availableList = backendManager.getAvailableBackends().join(', ');
+        return successResponse(`${backendName} terminal opened with ID: ${terminalId}${sizeInfo}\nAvailable backends: ${availableList}`);
+      }
+      
+      return successResponse(`${backendName} terminal opened with ID: ${terminalId}${sizeInfo}`);
     }, "Failed to open terminal");
   }
-);
+  );
 
-server.tool(
-  "mcpretentious-read",
+  server.tool(
+    "mcpretentious-read",
   "Reads text output from a terminal session. Returns the current screen contents. Use mcpretentious-screenshot for rich terminal info including colors, cursor position, and styles.",
   {
     terminalId: z.string().describe("The terminal ID to read from"),
     lines: z.number().optional().describe("Number of lines to read from the bottom"),
   },
   async ({ terminalId, lines }) => {
-    return withTerminalSession(terminalId, async (client, sessionId) => {
+    return withTerminalSession(terminalId, async (sessionId) => {
       return safeExecute(async () => {
-        const screen = await client.getScreenContents(sessionId, false);
+        const screen = await backendManager.getScreenContents(sessionId, false);
         let content = screen?.text || "";
         
         if (lines && content) {
@@ -160,10 +199,10 @@ server.tool(
       }, "Failed to read output");
     });
   }
-);
+  );
 
-server.tool(
-  "mcpretentious-screenshot",
+  server.tool(
+    "mcpretentious-screenshot",
   "Takes a token-optimized screenshot of the terminal screen using a layered format that reduces token usage by 85-98%. Returns only the data layers you need (text, cursor, colors, styles). Supports viewport limiting to show just a region or area around cursor. Essential for inspecting TUI applications without hitting token limits.",
   {
     terminalId: z.string().describe("The terminal ID to read from"),
@@ -184,8 +223,19 @@ server.tool(
       .describe("Skip empty lines to further reduce token usage")
   },
   async ({ terminalId, layers = ["text", "cursor"], region, aroundCursor, compact = false }) => {
-    return withTerminalSession(terminalId, async (client, sessionId) => {
+    return withTerminalSession(terminalId, async (sessionId) => {
       return safeExecute(async () => {
+        const backend = backendManager.getBackendForTerminal(sessionId);
+        
+        // Check if backend is TMux - it has dedicated screenshot method
+        if (backend instanceof TmuxBackend) {
+          const screenshot = await backend.getScreenshot(sessionId, {
+            layers, region, aroundCursor, compact
+          });
+          return successResponse(JSON.stringify(screenshot, null, 2));
+        }
+        
+        // iTerm2 backend - use existing logic
         const { 
           calculateViewport, 
           extractTextLayer, 
@@ -194,7 +244,7 @@ server.tool(
           applyCompactMode 
         } = await import('./lib/screenshot-layers.js');
         
-        const screen = await client.getScreenContents(sessionId, true);
+        const screen = await backendManager.getScreenContents(sessionId, true);
         
         // Normalize cursor values
         const cursor = {
@@ -204,7 +254,7 @@ server.tool(
         
         // Get terminal dimensions
         // iTerm2's grid_size is typically 1 less than actual content dimensions
-        const gridSize = await client.getProperty(sessionId, 'grid_size');
+        const gridSize = await backendManager.getProperty(sessionId, 'grid_size');
         const terminal = {
           width: gridSize.width + 1,
           height: gridSize.height + 1
@@ -257,18 +307,18 @@ server.tool(
       }, "Failed to get screen info");
     });
   }
-);
+  );
 
-server.tool(
-  "mcpretentious-close",
-  "Closes the iTerm2 window associated with the specified terminal ID.",
+  server.tool(
+    "mcpretentious-close",
+  "Closes the terminal window associated with the specified terminal ID.",
   {
     terminalId: z.string().describe("The terminal ID to close"),
   },
   async ({ terminalId }) => {
-    return withTerminalSession(terminalId, async (client, sessionId) => {
+    return withTerminalSession(terminalId, async (sessionId) => {
       return safeExecute(async () => {
-        const success = await client.closeSession(sessionId, true);
+        const success = await backendManager.closeSession(sessionId);
         
         if (success) {
           return successResponse(`Terminal ${terminalId} closed`);
@@ -278,60 +328,29 @@ server.tool(
       }, "Failed to close terminal");
     });
   }
-);
+  );
 
-server.tool(
-  "mcpretentious-list",
-  "Lists all currently open iTerm2 terminal sessions with their IDs.",
+  server.tool(
+    "mcpretentious-list",
+  "Lists all currently open terminal sessions with their IDs.",
   {},
   async () => {
     return safeExecute(async () => {
-      const client = await getClient();
-      const sessions = await client.listSessions();
-      
-      // Group sessions by window
-      const windowMap = new Map();
-      
-      for (const session of sessions) {
-        // Use the session UUID directly as the terminal ID
-        const terminalId = session.uniqueIdentifier;
-        const windowId = session.windowId;
-        const tabId = session.tabId;
-        
-        if (windowId) {
-          if (!windowMap.has(windowId)) {
-            windowMap.set(windowId, []);
-          }
-          
-          // No need for mapping - terminal ID IS the session ID
-          windowMap.get(windowId).push({
-            terminalId,
-            tabIndex: tabId,
-            sessionId: session.uniqueIdentifier
-          });
-        }
+      // Check if any backends are available
+      if (!backendManager.hasBackends()) {
+        throw new Error(backendManager.getNoBackendError());
       }
       
-      // Format output
-      const terminals = [];
-      for (const tabs of windowMap.values()) {
-        for (const tab of tabs) {
-          terminals.push(tab.terminalId);
-        }
-      }
+      const sessions = await backendManager.listSessions();
       
-      const output = [
-        `Windows: ${windowMap.size}, Total tabs: ${sessions.length}`,
-        ...terminals
-      ].join('\n');
-      
-      return successResponse(`iTerm status and terminal IDs:\n${output}`);
-    }, "Could not get iTerm status");
+      // Return JSON array of session objects
+      return successResponse(JSON.stringify(sessions));
+    }, "Could not list terminal sessions");
   }
-);
+  );
 
-server.tool(
-  "mcpretentious-type", 
+  server.tool(
+    "mcpretentious-type", 
   `Send text and keystrokes to a terminal. Always pass as array.
 
 Examples: ["ls -la"], ["cd /path", {"key": "enter"}], ["Hello", 32, "World"], [{"key": "ctrl-c"}]
@@ -374,9 +393,9 @@ Supported keys: ${SUPPORTED_KEYS}`,
     }
     
     // Now execute with terminal session
-    return withTerminalSession(terminalId, async (client, sessionId) => {
+    return withTerminalSession(terminalId, async (sessionId) => {
       return safeExecute(async () => {
-        const success = await client.sendText(sessionId, textToSend);
+        const success = await backendManager.sendText(sessionId, textToSend);
         
         if (success) {
           return successResponse(`Sent sequence of ${input.length} items to ${terminalId}`);
@@ -386,36 +405,41 @@ Supported keys: ${SUPPORTED_KEYS}`,
       }, "Failed to send sequence");
     });
   }
-);
+  );
 
-server.tool(
-  "mcpretentious-info",
+  server.tool(
+    "mcpretentious-info",
   "Gets terminal metadata including dimensions (columns × rows) and session information.",
   {
     terminalId: z.string().describe("The terminal ID to get info for"),
   },
   async ({ terminalId }) => {
-    return withTerminalSession(terminalId, async (client, sessionId) => {
+    return withTerminalSession(terminalId, async (sessionId) => {
       return safeExecute(async () => {
-        const info = await client.getSessionInfo(sessionId);
+        const info = await backendManager.getSessionInfo(sessionId);
+        const backend = backendManager.getBackendForTerminal(sessionId);
         
         // iTerm2's grid_size is typically 1 less than actual content dimensions
+        // TMux already returns correct dimensions
+        const adjustDimensions = backend.getType() === 'iterm';
+        
         return successResponse(JSON.stringify({
           terminalId,
+          backend: backend.getName(),
           sessionId: info.sessionId,
           windowId: info.windowId,
           dimensions: {
-            columns: info.dimensions.columns + 1,
-            rows: info.dimensions.rows + 1
+            columns: adjustDimensions ? info.dimensions.columns + 1 : info.dimensions.columns,
+            rows: adjustDimensions ? info.dimensions.rows + 1 : info.dimensions.rows
           }
         }, null, 2));
       }, "Failed to get terminal info");
     });
   }
-);
+  );
 
-server.tool(
-  "mcpretentious-resize",
+  server.tool(
+    "mcpretentious-resize",
   "Resizes a terminal to the specified dimensions in columns × rows.",
   {
     terminalId: z.string().describe("The terminal ID to resize"),
@@ -423,9 +447,9 @@ server.tool(
     rows: z.number().min(ITERM_DEFAULTS.MIN_ROWS).max(ITERM_DEFAULTS.MAX_ROWS).describe("Number of rows (height in lines)"),
   },
   async ({ terminalId, columns, rows }) => {
-    return withTerminalSession(terminalId, async (client, sessionId) => {
+    return withTerminalSession(terminalId, async (sessionId) => {
       return safeExecute(async () => {
-        const success = await client.setSessionSize(sessionId, columns, rows);
+        const success = await backendManager.setSessionSize(sessionId, columns, rows);
         
         if (success) {
           return successResponse(`Terminal ${terminalId} resized to ${columns}×${rows}`);
@@ -435,18 +459,127 @@ server.tool(
       }, "Failed to resize terminal");
     });
   }
-);
+  );
+}
+
+// Parse command-line arguments
+function parseCommandLineArgs() {
+  const options = {
+    backend: {
+      type: 'string',
+      short: 'b',
+      default: process.env.MCP_TERMINAL_BACKEND || 'auto'
+    },
+    help: {
+      type: 'boolean',
+      short: 'h',
+      default: false
+    },
+    verbose: {
+      type: 'boolean',
+      short: 'v',
+      default: process.env.VERBOSE === 'true'
+    }
+  };
+
+  try {
+    const { values } = parseArgs({ 
+      options, 
+      allowPositionals: false 
+    });
+    
+    return values;
+  } catch (error) {
+    console.error(`Error: ${error.message}`);
+    console.error('\nUsage: mcpretentious [options]');
+    console.error('\nOptions:');
+    console.error('  -b, --backend <type>  Backend to use: auto, iterm, tmux, api (default: auto)');
+    console.error('  -v, --verbose         Enable verbose output');
+    console.error('  -h, --help           Show this help message');
+    process.exit(1);
+  }
+}
+
+// Store backend mode globally for use in tools
+let BACKEND_MODE = 'auto';
 
 // Main entry point
 async function main() {
+  const args = parseCommandLineArgs();
+  
+  if (args.help) {
+    console.log('MCPretentious - Universal Terminal MCP');
+    console.log('\nUsage: mcpretentious [options]');
+    console.log('\nOptions:');
+    console.log('  -b, --backend <type>  Backend to use: auto, iterm, tmux, api (default: auto)');
+    console.log('                        - auto: Automatically detect best backend');
+    console.log('                        - iterm: Use iTerm2 backend (macOS only)');
+    console.log('                        - tmux: Use tmux backend (cross-platform)');
+    console.log('                        - api: Let LLM choose backend per session');
+    console.log('  -v, --verbose         Enable verbose output');
+    console.log('  -h, --help           Show this help message');
+    console.log('\nEnvironment variables:');
+    console.log('  MCP_TERMINAL_BACKEND  Default backend (overridden by --backend)');
+    console.log('  VERBOSE               Enable verbose output (overridden by --verbose)');
+    process.exit(0);
+  }
+  
+  // Validate backend option
+  const validBackends = ['auto', 'iterm', 'tmux', 'api'];
+  if (!validBackends.includes(args.backend)) {
+    console.error(`Error: Invalid backend '${args.backend}'. Must be one of: ${validBackends.join(', ')}`);
+    process.exit(1);
+  }
+  
+  // Store backend mode
+  BACKEND_MODE = args.backend;
+  
+  // Initialize backend manager
+  if (BACKEND_MODE === 'api') {
+    // In API mode, initialize with available backends but don't select default
+    await backendManager.initApiMode();
+    if (args.verbose) {
+      if (backendManager.hasBackends()) {
+        const available = backendManager.getAvailableBackends();
+        console.error(`MCPretentious: Running in API mode with backends: ${available.join(', ')}`);
+      } else {
+        console.error('MCPretentious: No backends available - tools will return errors');
+      }
+    }
+  } else {
+    // Normal mode - initialize with specific backend
+    await backendManager.init(BACKEND_MODE);
+    if (args.verbose) {
+      if (backendManager.hasBackends()) {
+        const backend = backendManager.getDefaultBackend();
+        console.error(`MCPretentious: Using ${backend.getName()} backend`);
+      } else {
+        console.error('MCPretentious: No backends available - tools will return errors');
+      }
+    }
+  }
+  
+  // Warn if no backends available but continue running
+  if (!backendManager.hasBackends()) {
+    console.error('\nWarning: No terminal backend available.');
+    console.error('The server will continue running, but all terminal operations will fail.');
+    console.error('\nTo enable terminal features, please install either:');
+    console.error('  - iTerm2 with Python API enabled (macOS)');
+    console.error('  - tmux (any platform)');
+  }
+  
+  // Register tools after backend initialization
+  registerTools();
+  
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  if (process.env.VERBOSE === 'true') {
-    console.error("iTerm2 MCP Server (WebSocket) running on stdio");
+  
+  if (args.verbose) {
+    console.error('MCPretentious MCP Server running on stdio');
   }
 }
 
 main().catch((error) => {
-  console.error("Fatal error in main():", error);
+  console.error("Fatal error:", error.message);
   process.exit(1);
 });

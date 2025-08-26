@@ -2,10 +2,31 @@
 
 This document contains technical API details for developers who want to understand the tool internals.
 
+## Backend Support
+
+MCPretentious supports multiple terminal backends:
+
+- **iTerm2** (macOS only): Uses iTerm2's WebSocket API with Protocol Buffers for high-performance control
+- **tmux** (cross-platform): Works with tmux sessions on Linux, macOS, and other Unix-like systems
+- **Auto mode**: Automatically selects the best available backend
+
+### Backend Selection
+
+Set the backend using the `MCP_TERMINAL_BACKEND` environment variable:
+- `auto` (default): Automatically detect and use the best available backend
+- `iterm`: Force iTerm2 backend (macOS only)
+- `tmux`: Force tmux backend
+
+### Terminal ID Format
+
+Terminal IDs vary by backend:
+- iTerm2: `iterm-{windowId}-{tabIndex}` (e.g., `iterm-12345-1`)
+- tmux: `tmux:{sessionName}` (e.g., `tmux:mcp-session-123`)
+
 ## Available Tools
 
 ### `mcpretentious-open`
-Opens a new iTerm2 terminal window with optional size specification.
+Opens a new terminal session with optional size specification. The backend used depends on availability and configuration (iTerm2 on macOS, tmux on any platform).
 
 **Parameters**:
 - `columns` (number, optional): Initial width in columns (20-500, default: 80)
@@ -16,7 +37,9 @@ Opens a new iTerm2 terminal window with optional size specification.
 **Example Response**:
 ```json
 {
-  "terminalId": "iterm-12345-1"
+  "terminalId": "iterm-12345-1"  // iTerm2 backend
+  // or
+  "terminalId": "tmux:session-name"  // tmux backend
 }
 ```
 
@@ -48,15 +71,15 @@ Reads the current screen contents from a terminal session. Always returns what's
 **Returns**: Plain text of the terminal screen content
 
 ### `mcpretentious-close`
-Closes the iTerm2 window associated with the terminal ID.
+Closes the terminal session associated with the terminal ID.
 
 **Parameters**:
 - `terminalId` (string, required): ID of the terminal
 
 ### `mcpretentious-list`
-Lists all currently open iTerm2 terminal sessions.
+Lists all currently open terminal sessions across all available backends (iTerm2, tmux, etc.).
 
-**Returns**: List of active terminal IDs and iTerm status
+**Returns**: JSON array of session objects with terminal IDs, backend names, and session metadata
 
 ### `mcpretentious-info`
 Gets terminal metadata including dimensions and session information.
@@ -162,28 +185,29 @@ const terminal = await use_mcp_tool("mcpretentious", "mcpretentious-open", {
   columns: 120,
   rows: 40
 });
+// Returns terminalId like "iterm-12345-1" or "tmux:mcp-session-123"
 
 // Get terminal info
 const info = await use_mcp_tool("mcpretentious", "mcpretentious-info", {
-  terminalId: "iterm-12345-1"
+  terminalId: terminal.terminalId
 });
 
 // Resize terminal
 await use_mcp_tool("mcpretentious", "mcpretentious-resize", {
-  terminalId: "iterm-12345-1",
+  terminalId: terminal.terminalId,
   columns: 80,
   rows: 24
 });
 
 // Execute a command
 await use_mcp_tool("mcpretentious", "mcpretentious-type", {
-  terminalId: "iterm-12345-1",
+  terminalId: terminal.terminalId,
   input: ["ls -la", {key: "enter"}]
 });
 
 // Read the output
 const output = await use_mcp_tool("mcpretentious", "mcpretentious-read", {
-  terminalId: "iterm-12345-1"
+  terminalId: terminal.terminalId
 });
 ```
 
@@ -192,7 +216,7 @@ const output = await use_mcp_tool("mcpretentious", "mcpretentious-read", {
 #### Example 1: Minimal Screenshot (text and cursor only)
 ```javascript
 const minimalScreen = await use_mcp_tool("mcpretentious", "mcpretentious-screenshot", {
-  terminalId: "iterm-12345-1",
+  terminalId: terminal.terminalId,
   layers: ["text", "cursor"]
 });
 ```
@@ -235,7 +259,7 @@ const minimalScreen = await use_mcp_tool("mcpretentious", "mcpretentious-screens
 #### Example 2: Screenshot Around Cursor with Styles
 ```javascript
 const aroundCursor = await use_mcp_tool("mcpretentious", "mcpretentious-screenshot", {
-  terminalId: "iterm-12345-1",
+  terminalId: terminal.terminalId,
   layers: ["text", "cursor", "styles"],
   aroundCursor: 3
 });
@@ -290,7 +314,7 @@ const aroundCursor = await use_mcp_tool("mcpretentious", "mcpretentious-screensh
 #### Example 3: Region with Colors
 ```javascript
 const region = await use_mcp_tool("mcpretentious", "mcpretentious-screenshot", {
-  terminalId: "iterm-12345-1",
+  terminalId: terminal.terminalId,
   layers: ["text", "fgColors", "bgColors"],
   region: { left: 0, top: 0, width: 40, height: 5 }
 });
@@ -351,7 +375,7 @@ const region = await use_mcp_tool("mcpretentious", "mcpretentious-screenshot", {
 #### Example 4: Combined Styles with Colors
 ```javascript
 const combined = await use_mcp_tool("mcpretentious", "mcpretentious-screenshot", {
-  terminalId: "iterm-12345-1",
+  terminalId: terminal.terminalId,
   layers: ["text", "cursor", "styles", "fgColors", "bgColors"],
   region: { left: 0, top: 5, width: 50, height: 8 }
 });
@@ -445,7 +469,7 @@ const combined = await use_mcp_tool("mcpretentious", "mcpretentious-screenshot",
 #### Example 5: Individual Style Layers with Compact Mode
 ```javascript
 const fullStyles = await use_mcp_tool("mcpretentious", "mcpretentious-screenshot", {
-  terminalId: "iterm-12345-1",
+  terminalId: terminal.terminalId,
   layers: ["text", "bold", "italic", "underline"],
   compact: true,
   aroundCursor: 2

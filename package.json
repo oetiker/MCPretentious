@@ -1,7 +1,7 @@
 {
   "name": "mcpretentious",
   "version": "0.2.5",
-  "description": "MCPretentious - the Final iTerm MCP. High-performance iTerm2 automation via WebSocket API with cursor position, colors, and styles. No focus stealing, 20x faster than AppleScript.",
+  "description": "MCPretentious - Universal Terminal MCP. High-performance terminal automation for iTerm2 (WebSocket) and tmux (control mode). Cross-platform support with cursor position, colors, and layered screenshots.",
   "main": "mcpretentious.js",
   "type": "module",
   "bin": {
@@ -19,10 +19,14 @@
     "mcp",
     "iterm",
     "iterm2",
+    "tmux",
     "terminal",
+    "cross-platform",
     "model-context-protocol",
     "cursor-ide",
-    "claude-code"
+    "claude-code",
+    "linux",
+    "macos"
   ],
   "author": "Tobi Oetiker",
   "license": "MIT",
@@ -35,8 +39,10 @@
   },
   "homepage": "https://github.com/oetiker/MCPretentious#readme",
   "dependencies": {
+    "@google/gemini-cli": "^0.1.22",
     "@modelcontextprotocol/sdk": "^1.7.0",
     "protobufjs": "^7.2.5",
+    "uuid": "^11.1.0",
     "ws": "^8.16.0",
     "zod": "^3.24.2"
   },

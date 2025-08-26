@@ -88,7 +88,7 @@ describe('MCPretentious Tests with Real Server', () => {
       const openTool = tools.tools.find(t => t.name === 'mcpretentious-open');
       
       assert.ok(openTool, 'mcpretentious-open tool should exist');
-      assert.ok(openTool.description.includes('Opens a new iTerm2 window'), 'Should have proper description');
+      assert.ok(openTool.description.includes('Opens a new terminal window'), 'Should have proper description');
       assert.ok(openTool.inputSchema.properties.columns, 'Should have columns parameter');
       assert.ok(openTool.inputSchema.properties.rows, 'Should have rows parameter');
       assert.strictEqual(openTool.inputSchema.properties.columns.type, 'number', 'Columns should be number');
@@ -225,7 +225,9 @@ describe('MCPretentious Tests with Real Server', () => {
         arguments: {}
       });
       
-      assert.ok(result.content[0].text.includes('iTerm status'), 'Should return iTerm status');
+      // The list tool now returns JSON array
+      const text = result.content[0].text;
+      assert.ok(text.startsWith('[') || text.includes('No active terminal sessions'), 'Should return JSON array or no sessions message');
     });
     
     it('should accept valid terminal ID format', async () => {

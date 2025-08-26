@@ -12,7 +12,7 @@ jobs:
     
     strategy:
       matrix:
-        os: [macos-latest]
+        os: [ubuntu-latest]
         node-version: [20.x]
     
     steps:
@@ -24,46 +24,30 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     
+    - name: Install tmux
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y tmux
+        tmux -V
+    
     - name: Install dependencies
       run: npm ci
     
     - name: Run unit tests
       run: NODE_ENV=test npm test
     
-    - name: Check if iTerm2 is available
-      id: check-iterm
+    - name: Start tmux session for testing
       run: |
-        if osascript -e 'tell application "System Events" to name of application processes' | grep -q iTerm2; then
-          echo "iterm_available=true" >> $GITHUB_OUTPUT
-        else
-          echo "iterm_available=false" >> $GITHUB_OUTPUT
-        fi
-      continue-on-error: true
-    
-    - name: Install iTerm2 (if not available)
-      if: steps.check-iterm.outputs.iterm_available == 'false'
-      run: |
-        echo "Installing iTerm2..."
-        brew install --cask iterm2 || true
-        # Try to launch iTerm2 to ensure it's running
-        open -a iTerm || true
-        # Give iTerm time to initialize
-        sleep 5
-        # Check if iTerm2 is now running
-        if osascript -e 'tell application "System Events" to name of application processes' | grep -q iTerm2; then
-          echo "✓ iTerm2 is now running"
-        else
-          echo "⚠ iTerm2 is not running (this is expected in headless CI)"
-        fi
+        # Start a detached tmux session for testing
+        tmux new-session -d -s test-session
+        # List sessions to verify
+        tmux ls
     
     - name: Run integration tests
       run: |
         echo "Running integration tests..."
-        npm run test:integration || {
-          echo "Integration tests completed with exit code: $?"
-          echo "Note: Integration tests may skip on CI if iTerm2 cannot run headless"
-          exit 0
-        }
-      continue-on-error: false  # Changed to false since we handle errors above
+        # Set environment to use tmux backend for tests
+        npm run test:integration
+      continue-on-error: false
 
     

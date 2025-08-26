@@ -1,10 +1,10 @@
-# MCPretentious - the Final iTerm MCP
+# MCPretentious - Universal Terminal MCP
 
 [![npm version](https://badge.fury.io/js/mcpretentious.svg)](https://www.npmjs.com/package/mcpretentious)
 [![Test Status](https://github.com/oetiker/MCPretentious/workflows/Test/badge.svg)](https://github.com/oetiker/MCPretentious/actions/workflows/test.yml)
-[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-**The ultimate iTerm2 automation tool for LLM assistants.** MCPretentious enables your LLM to control multiple terminal windows, run commands, debug applications, and interact with command-line tools - all without disrupting your workflow.
+**The ultimate terminal automation tool for LLM assistants.** MCPretentious enables your LLM to control multiple terminal windows across platforms - supporting both iTerm2 (macOS) and tmux (cross-platform). Run commands, debug applications, and interact with command-line tools on any system.
 
 <!-- LATEST-CHANGES-START -->
 ## 📋 Latest Release (v0.2.5 - 2025-08-25)
@@ -14,21 +14,27 @@ See CHANGELOG.md for details
 For full changelog, see [CHANGELOG.md](CHANGELOG.md)
 <!-- LATEST-CHANGES-END -->
 
-## ⚡ High-Performance WebSocket Implementation
+## ⚡ Multi-Backend Support
 
-MCPretentious is the **only MCP implementation** that uses iTerm2's native WebSocket API with Protocol Buffers for lightning-fast terminal control - **20x faster than AppleScript-based solutions**. We reverse-engineered the Python API bindings to bring you direct WebSocket communication, providing instant feedback and real-time terminal interaction.
+MCPretentious supports two high-performance backends:
+
+- **iTerm2 (macOS)**: Uses native WebSocket API with Protocol Buffers - **20x faster than AppleScript**
+- **TMux (Cross-platform)**: Works on Linux, macOS, BSD, and even headless servers via tmux control mode
+
+The backend is auto-detected, or you can specify your preference. Both backends provide the same API, ensuring your automations work everywhere.
 
 ## 🎯 What Can Your LLM Do With This?
 
 Once installed, your LLM assistant can:
 
-- **Run commands and scripts** in iTerm2 terminals
+- **Run commands and scripts** in terminal windows (iTerm2 or tmux)
 - **Test and debug code** by executing it and reading output
 - **Interact with TUI applications** like vim, htop, or database CLIs
 - **Get real-time feedback from TUI apps** by reading the actual screen content with cursor position and colors
 - **Manage multiple terminal sessions** simultaneously
-- **Monitor long-running processes** checking on progess or logs
+- **Monitor long-running processes** checking on progress or logs
 - **Automate complex terminal workflows** with special key support
+- **Work on remote servers** via SSH with tmux
 
 ### Example Prompts You Can Use:
 
@@ -44,11 +50,18 @@ If the LLM doesn't get it, add that it should use MCPretentious to do it.
 ## 🚀 Quick Start
 
 ### Prerequisites
-- macOS (iTerm2 is Mac-only)
+
+#### For iTerm2 Backend (macOS)
+- macOS
 - [iTerm2](https://iterm2.com/) installed with Python API enabled
   - Go to iTerm2 → Preferences → General → Magic
   - Enable "Python API"
 - Node.js 20 or higher
+
+#### For TMux Backend (Cross-platform)
+- [tmux](https://github.com/tmux/tmux) installed (`brew install tmux`, `apt install tmux`, etc.)
+- Node.js 20 or higher
+- Works on Linux, macOS, BSD, WSL, and headless servers
 
 ### Installation
 
@@ -82,7 +95,10 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "mcpretentious": {
       "command": "npx",
-      "args": ["mcpretentious"]
+      "args": ["mcpretentious"],
+      "env": {
+        "MCP_TERMINAL_BACKEND": "auto"  // Options: "auto", "iterm", "tmux", "api"
+      }
     }
   }
 }
@@ -92,7 +108,12 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 Simply run:
 ```bash
-claude mcp add mcpretentious npx mcpretentious
+claude mcp add mcpretentious npx mcpretentious 
+```
+
+Or to specify a backend:
+```bash
+claude mcp add mcpretentious npx mcpretentious --backend=auto
 ```
 
 #### For Cursor IDE
@@ -102,17 +123,52 @@ Add to `~/.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "mcpretentious": {
+    "mcpretentious-tmux": {
       "command": "npx",
-      "args": ["mcpretentious"]
+      "args": ["mcpretentious","--backend","tmux],
     }
   }
 }
 ```
 
+## 🌍 Backend Configuration
+
+### Automatic Detection
+By default, MCPretentious automatically detects the best available backend:
+1. iTerm2 (if on macOS with iTerm2 installed)
+2. TMux (if tmux is installed)
+
+### Manual Configuration
+Set the `MCP_TERMINAL_BACKEND` environment variable or use command-line options:
+- `auto` - Automatic detection (default)
+- `iterm` - Force iTerm2 backend
+- `tmux` - Force tmux backend
+- `api` - API mode: LLM selects backend per session
+
+### API Mode
+When started with `--backend=api` and multiple backends are available (both iTerm2 and tmux), the LLM can choose which backend to use for each new terminal session. This is useful when you want to:
+- Use iTerm2 for local development with rich TUI support
+- Use tmux for remote server sessions or persistent workflows
+- Let the LLM decide based on the task at hand
+
+In API mode, the `mcpretentious-open` tool gains an optional `backend` parameter.
+
+### Backend Comparison
+
+| Feature | iTerm2 | TMux |
+|---------|--------|------|
+| Platform | macOS only | Cross-platform |
+| Performance | WebSocket (fastest) | Control mode (fast) |
+| Colors | Full RGB | ANSI 256 |
+| Styles | All attributes | Bold, italic, underline |
+| Screenshots | Native | ANSI parsed |
+| Focus management | Automatic | Terminal-dependent |
+| Remote servers | No | Yes (via SSH) |
+| Authentication | Cookie/key | Unix permissions |
+
 ## 💪 Why MCPretentious?
 
-### The Problem with Other iTerm MCPs
+### The Problem with Other Terminal MCPs
 
 Other implementations have critical limitations:
 - Newly opened iTerms **steal focus** - disrupting your workflow
