@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+## [1.0.0] - 2025-08-26
+
+### Added
 - **TMux backend support** - MCPretentious now works on Linux, BSD, and headless servers via tmux control mode
 - Backend abstraction layer supporting multiple terminal implementations
 - Auto-detection of available backends (iTerm2 on macOS, tmux everywhere)
@@ -31,8 +39,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - iTerm2 closeSession now properly converts windowId to string for protobuf
-
-
 ## [0.2.5] - 2025-08-25
 
 
