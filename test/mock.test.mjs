@@ -67,10 +67,10 @@ describe('MCPretentious Tests with Real Server', () => {
   });
   
   describe('Tool Registration', () => {
-    it('should have all 8 tools registered', async () => {
+    it('should have all 9 tools registered', async () => {
       const tools = await client.listTools();
       
-      assert.strictEqual(tools.tools.length, 8, 'Should have exactly 8 tools');
+      assert.strictEqual(tools.tools.length, 9, 'Should have exactly 9 tools');
       
       const toolNames = tools.tools.map(t => t.name);
       assert.ok(toolNames.includes('mcpretentious-open'), 'Should have mcpretentious-open');
@@ -81,6 +81,7 @@ describe('MCPretentious Tests with Real Server', () => {
       assert.ok(toolNames.includes('mcpretentious-type'), 'Should have mcpretentious-type');
       assert.ok(toolNames.includes('mcpretentious-info'), 'Should have mcpretentious-info');
       assert.ok(toolNames.includes('mcpretentious-resize'), 'Should have mcpretentious-resize');
+      assert.ok(toolNames.includes('mcpretentious-mouse'), 'Should have mcpretentious-mouse');
     });
     
     it('should have correct schema for mcpretentious-open', async () => {

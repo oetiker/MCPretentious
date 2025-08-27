@@ -460,6 +460,57 @@ Supported keys: ${SUPPORTED_KEYS}`,
     });
   }
   );
+
+  server.tool(
+    "mcpretentious-mouse",
+    "Send mouse interactions to a terminal (click, drag, or scroll). Coordinates are 0-based character positions.",
+    {
+      terminalId: z.string().describe("The terminal ID to send mouse events to"),
+      action: z.enum(['click', 'drag', 'scroll']).describe("Type of mouse action"),
+      x: z.number().min(0).describe("X coordinate (column position, 0-based)"),
+      y: z.number().min(0).describe("Y coordinate (row position, 0-based)"),
+      endX: z.number().min(0).optional().describe("End X coordinate for drag action"),
+      endY: z.number().min(0).optional().describe("End Y coordinate for drag action"),
+      button: z.enum(['left', 'middle', 'right']).optional().default('left').describe("Mouse button (default: left)"),
+      direction: z.enum(['up', 'down']).optional().describe("Scroll direction (required for scroll action)"),
+      amount: z.number().min(1).max(10).optional().default(1).describe("Number of scroll steps (default: 1, for scroll action)")
+    },
+    async ({ terminalId, action, x, y, endX, endY, button, direction, amount }) => {
+      return withTerminalSession(terminalId, async (sessionId) => {
+        return safeExecute(async () => {
+          const backend = backendManager.getBackendForTerminal(sessionId);
+          
+          // Check if backend supports mouse operations
+          if (backend.getType() !== 'tmux') {
+            throw new Error(`Mouse support is currently only available for TMux backend. Current backend: ${backend.getName()}`);
+          }
+
+          switch (action) {
+            case 'click':
+              await backend.sendMouseClick(sessionId, x, y, button);
+              return successResponse(`Mouse ${button} click sent to terminal at (${x}, ${y})`);
+              
+            case 'drag':
+              if (endX === undefined || endY === undefined) {
+                throw new Error("endX and endY are required for drag action");
+              }
+              await backend.sendMouseDrag(sessionId, x, y, endX, endY, button);
+              return successResponse(`Mouse ${button} drag from (${x}, ${y}) to (${endX}, ${endY})`);
+              
+            case 'scroll':
+              if (!direction) {
+                throw new Error("direction is required for scroll action");
+              }
+              await backend.sendMouseScroll(sessionId, x, y, direction, amount);
+              return successResponse(`Mouse scrolled ${direction} ${amount} step(s) at (${x}, ${y})`);
+              
+            default:
+              throw new Error(`Unknown mouse action: ${action}`);
+          }
+        }, "Failed to send mouse event");
+      });
+    }
+  );
 }
 
 // Parse command-line arguments
