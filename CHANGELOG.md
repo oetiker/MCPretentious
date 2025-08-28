@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+## [1.1.0] - 2025-08-28
+
+### Added
 - **Mouse support for TMux backend** - New `mcpretentious-mouse` tool for sending mouse interactions
   - Mouse click support (left, middle, right buttons) at specific coordinates
   - Mouse drag support from one position to another
@@ -16,11 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Uses SGR mouse protocol via escape sequences for reliable event delivery
 - Comprehensive test suite for mouse functionality (`test/tmux-mouse.test.mjs`)
 - `close()` method implementation for TmuxClientSimple for interface compatibility
-
-### Changed
-
-### Fixed
-
 ## [1.0.0] - 2025-08-26
 
 ### Added

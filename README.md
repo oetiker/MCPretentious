@@ -7,32 +7,17 @@
 **The ultimate terminal automation tool for LLM assistants.** MCPretentious enables your LLM to control multiple terminal windows across platforms - supporting both iTerm2 (macOS) and tmux (cross-platform). Run commands, debug applications, and interact with command-line tools on any system.
 
 <!-- LATEST-CHANGES-START -->
-## 📋 Latest Release (v1.0.0 - 2025-08-26)
+## 📋 Latest Release (v1.1.0 - 2025-08-28)
 
 ### Added
-- **TMux backend support** - MCPretentious now works on Linux, BSD, and headless servers via tmux control mode
-- Backend abstraction layer supporting multiple terminal implementations
-- Auto-detection of available backends (iTerm2 on macOS, tmux everywhere)
-- Command-line options for backend selection (`--backend=auto|iterm|tmux|api`)
-- **API mode** (`--backend=api`) - Lets LLM choose backend per session when multiple backends available
-- Dynamic tool schema - `backend` parameter only shown to LLM when relevant (API mode with 2+ backends)
-- `MCP_TERMINAL_BACKEND` environment variable for default backend selection
-- ANSI escape sequence parser for tmux color and style support
-- Structured JSON screenshot format for tmux (matching iTerm2 API)
-- Cross-platform terminal control with unified API
-- Comprehensive error handling when no backends are available
-- Help option (`--help`) showing all available CLI arguments
-
-### Changed
-- Complete architecture refactor to support multiple backends
-- Terminal IDs now use format `{backend}:{sessionId}` (e.g., `iterm:uuid`, `tmux:session-name`)
-- Main entry point now initializes backend manager before starting server
-- Tool descriptions updated to be backend-agnostic
-- Tools now registered after backend initialization for dynamic schemas
-- Package description updated to reflect cross-platform support
-
-### Fixed
-- iTerm2 closeSession now properly converts windowId to string for protobuf
+- **Mouse support for TMux backend** - New `mcpretentious-mouse` tool for sending mouse interactions
+  - Mouse click support (left, middle, right buttons) at specific coordinates
+  - Mouse drag support from one position to another
+  - Mouse scroll support (up/down) with configurable scroll amount
+  - Automatic mouse mode activation in tmux when sending mouse events
+  - Uses SGR mouse protocol via escape sequences for reliable event delivery
+- Comprehensive test suite for mouse functionality (`test/tmux-mouse.test.mjs`)
+- `close()` method implementation for TmuxClientSimple for interface compatibility
 
 For full changelog, see [CHANGELOG.md](CHANGELOG.md)
 <!-- LATEST-CHANGES-END -->
