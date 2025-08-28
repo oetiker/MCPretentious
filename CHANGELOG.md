@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+## [1.1.1] - 2025-08-28
+
+### Added
 - **Mouse support for iTerm2 backend** - Extended mouse functionality to iTerm2
   - Uses the same SGR mouse protocol as tmux backend
   - Full parity with tmux mouse features (click, drag, scroll)
@@ -20,7 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fixed tmux command escaping to properly handle bracket characters in mouse escape sequences
-
 ## [1.1.0] - 2025-08-28
 
 ### Added

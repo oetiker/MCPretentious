@@ -7,19 +7,21 @@
 **The ultimate terminal automation tool for LLM assistants.** MCPretentious enables your LLM to control multiple terminal windows across platforms - supporting both iTerm2 (macOS) and tmux (cross-platform). Run commands, debug applications, and interact with command-line tools on any system.
 
 <!-- LATEST-CHANGES-START -->
-## 📋 Latest Release (v1.1.0 - 2025-08-28)
+## 📋 Latest Release (v1.1.1 - 2025-08-28)
 
 ### Added
-- **Mouse support for TMux backend** - New `mcpretentious-mouse` tool for sending mouse interactions
-  - Mouse click support (left, middle, right buttons) at specific coordinates
-  - Mouse drag support from one position to another
-  - Mouse scroll support (up/down) with configurable scroll amount
-  - Automatic mouse mode activation in tmux when sending mouse events
-  - Uses SGR mouse protocol via escape sequences for reliable event delivery
-- Comprehensive test suite for mouse functionality (`test/tmux-mouse.test.mjs`)
-- `close()` method implementation for TmuxClientSimple for interface compatibility
+- **Mouse support for iTerm2 backend** - Extended mouse functionality to iTerm2
+  - Uses the same SGR mouse protocol as tmux backend
+  - Full parity with tmux mouse features (click, drag, scroll)
+- Shared SGR mouse protocol module (`lib/mouse-sgr-protocol.js`) for code reuse
+- Comprehensive unit tests for SGR mouse protocol generation
 
-_Note: The upcoming release extends mouse support to iTerm2 as well!_
+### Changed
+- Refactored mouse implementation to eliminate code duplication between backends
+- Both iTerm2 and tmux backends now use shared mouse protocol utilities
+
+### Fixed
+- Fixed tmux command escaping to properly handle bracket characters in mouse escape sequences
 
 For full changelog, see [CHANGELOG.md](CHANGELOG.md)
 <!-- LATEST-CHANGES-END -->
