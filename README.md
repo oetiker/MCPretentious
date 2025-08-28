@@ -7,15 +7,21 @@
 **The ultimate terminal automation tool for LLM assistants.** MCPretentious enables your LLM to control multiple terminal windows across platforms - supporting both iTerm2 (macOS) and tmux (cross-platform). Run commands, debug applications, and interact with command-line tools on any system.
 
 <!-- LATEST-CHANGES-START -->
-## 📋 Latest Release (v1.2.0 - 2025-08-28)
+## 📋 Latest Release (v1.2.1 - 2025-08-28)
+
+### Added
+- Comprehensive mouse integration tests covering all event types, buttons, and modifiers
 
 ### Changed
-- **Redesigned mouse API to align with SGR protocol** - The `mcpretentious-mouse` tool now provides direct control over mouse events:
-  - Changed from high-level actions (`click`, `drag`, `scroll`) to protocol-aligned events (`press`, `release`, `drag`)
-  - Added support for named buttons (`left`, `middle`, `right`, `scrollUp`, `scrollDown`) and direct button codes (`button-0` through `button-127`)
-  - Added keyboard modifier support (Shift, Alt, Ctrl) for all mouse events
-  - Comprehensive in-tool documentation of all parameters and valid values
-  - Mouse coordinates remain 0-based for developer convenience (converted to 1-based internally for SGR protocol)
+- **Refactored internal mouse architecture** for cleaner implementation:
+  - Unified mouse protocol handling through single `generateMouseEvent()` function
+  - Removed redundant convenience methods (`sendMouseClick`, `sendMouseDrag`, `sendMouseScroll`) from backends
+  - Simplified `mouse-sgr-protocol.js` to eliminate duplicate logic
+  - All backends now use consistent `sendMouseEvent()` method internally
+- **Note**: External MCP API remains unchanged - these are internal improvements only
+
+### Fixed
+- Fixed async command execution in tmux mouse methods to prevent "no server running" errors
 
 For full changelog, see [CHANGELOG.md](CHANGELOG.md)
 <!-- LATEST-CHANGES-END -->

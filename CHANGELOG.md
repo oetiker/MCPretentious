@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+## [1.2.1] - 2025-08-28
+
+### Added
 - Comprehensive mouse integration tests covering all event types, buttons, and modifiers
 
 ### Changed
@@ -20,8 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fixed async command execution in tmux mouse methods to prevent "no server running" errors
-- Properly await all tmux commands to ensure sequential execution
-
 ## [1.2.0] - 2025-08-28
 
 ### Changed
