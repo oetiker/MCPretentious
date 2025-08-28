@@ -8,10 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Comprehensive mouse integration tests covering all event types, buttons, and modifiers
 
 ### Changed
+- **Refactored internal mouse architecture** for cleaner implementation:
+  - Unified mouse protocol handling through single `generateMouseEvent()` function
+  - Removed redundant convenience methods (`sendMouseClick`, `sendMouseDrag`, `sendMouseScroll`) from backends
+  - Simplified `mouse-sgr-protocol.js` to eliminate duplicate logic
+  - All backends now use consistent `sendMouseEvent()` method internally
+- **Note**: External MCP API remains unchanged - these are internal improvements only
 
 ### Fixed
+- Fixed async command execution in tmux mouse methods to prevent "no server running" errors
+- Properly await all tmux commands to ensure sequential execution
 
 ## [1.2.0] - 2025-08-28
 

@@ -375,6 +375,295 @@ for (const backend of availableBackends) {
       });
     });
     
+    describe('Mouse Support', () => {
+      let testTerminalId;
+      
+      before(async () => {
+        // Open a terminal for mouse tests
+        const result = await client.callTool({
+          name: 'mcpretentious-open',
+          arguments: {}
+        });
+        testTerminalId = extractTerminalId(result.content[0].text);
+        openTerminals.push(testTerminalId);
+        
+        // Wait for terminal to be ready
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Clear terminal and prepare for mouse tests
+        await client.callTool({
+          name: 'mcpretentious-type',
+          arguments: {
+            terminalId: testTerminalId,
+            input: ['clear', { key: 'enter' }]
+          }
+        });
+        await new Promise(resolve => setTimeout(resolve, 200));
+      });
+      
+      after(async () => {
+        if (testTerminalId) {
+          try {
+            await client.callTool({
+              name: 'mcpretentious-close',
+              arguments: { terminalId: testTerminalId }
+            });
+            openTerminals = openTerminals.filter(id => id !== testTerminalId);
+          } catch (error) {
+            console.error(`Failed to close terminal ${testTerminalId}:`, error.message);
+          }
+        }
+      });
+      
+      it('should send mouse click events', async () => {
+        // Send a left click at position (10, 5)
+        const clickResult = await client.callTool({
+          name: 'mcpretentious-mouse',
+          arguments: {
+            terminalId: testTerminalId,
+            event: 'press',
+            x: 10,
+            y: 5,
+            button: 'left'
+          }
+        });
+        
+        assert.ok(clickResult.content[0].text.includes('Mouse press: left at (10, 5)'),
+          `Should confirm left mouse press for ${backend}`);
+        
+        // Send release
+        const releaseResult = await client.callTool({
+          name: 'mcpretentious-mouse',
+          arguments: {
+            terminalId: testTerminalId,
+            event: 'release',
+            x: 10,
+            y: 5,
+            button: 'left'
+          }
+        });
+        
+        assert.ok(releaseResult.content[0].text.includes('Mouse release: left at (10, 5)'),
+          `Should confirm left mouse release for ${backend}`);
+      });
+      
+      it('should send mouse drag events', async () => {
+        // Start drag
+        await client.callTool({
+          name: 'mcpretentious-mouse',
+          arguments: {
+            terminalId: testTerminalId,
+            event: 'press',
+            x: 5,
+            y: 5,
+            button: 'left'
+          }
+        });
+        
+        // Drag motion
+        const dragResult = await client.callTool({
+          name: 'mcpretentious-mouse',
+          arguments: {
+            terminalId: testTerminalId,
+            event: 'drag',
+            x: 15,
+            y: 10,
+            button: 'left'
+          }
+        });
+        
+        assert.ok(dragResult.content[0].text.includes('Mouse drag: left at (15, 10)'),
+          `Should confirm mouse drag for ${backend}`);
+        
+        // End drag
+        await client.callTool({
+          name: 'mcpretentious-mouse',
+          arguments: {
+            terminalId: testTerminalId,
+            event: 'release',
+            x: 15,
+            y: 10,
+            button: 'left'
+          }
+        });
+      });
+      
+      it('should send mouse scroll events', async () => {
+        // Scroll up
+        const scrollUpResult = await client.callTool({
+          name: 'mcpretentious-mouse',
+          arguments: {
+            terminalId: testTerminalId,
+            event: 'press',
+            x: 20,
+            y: 10,
+            button: 'scrollUp'
+          }
+        });
+        
+        assert.ok(scrollUpResult.content[0].text.includes('scrollUp at (20, 10)'),
+          `Should confirm scroll up for ${backend}`);
+        
+        // Scroll down
+        const scrollDownResult = await client.callTool({
+          name: 'mcpretentious-mouse',
+          arguments: {
+            terminalId: testTerminalId,
+            event: 'press',
+            x: 20,
+            y: 10,
+            button: 'scrollDown'
+          }
+        });
+        
+        assert.ok(scrollDownResult.content[0].text.includes('scrollDown at (20, 10)'),
+          `Should confirm scroll down for ${backend}`);
+      });
+      
+      it('should handle mouse events with modifiers', async () => {
+        // Click with shift modifier
+        const shiftClickResult = await client.callTool({
+          name: 'mcpretentious-mouse',
+          arguments: {
+            terminalId: testTerminalId,
+            event: 'press',
+            x: 10,
+            y: 5,
+            button: 'left',
+            modifiers: { shift: true }
+          }
+        });
+        
+        assert.ok(shiftClickResult.content[0].text.includes('with Shift'),
+          `Should indicate shift modifier for ${backend}`);
+        
+        // Release with shift
+        await client.callTool({
+          name: 'mcpretentious-mouse',
+          arguments: {
+            terminalId: testTerminalId,
+            event: 'release',
+            x: 10,
+            y: 5,
+            button: 'left',
+            modifiers: { shift: true }
+          }
+        });
+        
+        // Click with multiple modifiers
+        const multiModResult = await client.callTool({
+          name: 'mcpretentious-mouse',
+          arguments: {
+            terminalId: testTerminalId,
+            event: 'press',
+            x: 10,
+            y: 5,
+            button: 'right',
+            modifiers: { ctrl: true, alt: true }
+          }
+        });
+        
+        assert.ok(multiModResult.content[0].text.includes('Ctrl') && 
+                  multiModResult.content[0].text.includes('Alt'),
+          `Should indicate multiple modifiers for ${backend}`);
+        
+        // Release
+        await client.callTool({
+          name: 'mcpretentious-mouse',
+          arguments: {
+            terminalId: testTerminalId,
+            event: 'release',
+            x: 10,
+            y: 5,
+            button: 'right',
+            modifiers: { ctrl: true, alt: true }
+          }
+        });
+      });
+      
+      it('should handle different mouse buttons', async () => {
+        // Middle button click
+        const middleResult = await client.callTool({
+          name: 'mcpretentious-mouse',
+          arguments: {
+            terminalId: testTerminalId,
+            event: 'press',
+            x: 15,
+            y: 8,
+            button: 'middle'
+          }
+        });
+        
+        assert.ok(middleResult.content[0].text.includes('middle'),
+          `Should handle middle button for ${backend}`);
+        
+        await client.callTool({
+          name: 'mcpretentious-mouse',
+          arguments: {
+            terminalId: testTerminalId,
+            event: 'release',
+            x: 15,
+            y: 8,
+            button: 'middle'
+          }
+        });
+        
+        // Right button click
+        const rightResult = await client.callTool({
+          name: 'mcpretentious-mouse',
+          arguments: {
+            terminalId: testTerminalId,
+            event: 'press',
+            x: 25,
+            y: 12,
+            button: 'right'
+          }
+        });
+        
+        assert.ok(rightResult.content[0].text.includes('right'),
+          `Should handle right button for ${backend}`);
+        
+        await client.callTool({
+          name: 'mcpretentious-mouse',
+          arguments: {
+            terminalId: testTerminalId,
+            event: 'release',
+            x: 25,
+            y: 12,
+            button: 'right'
+          }
+        });
+      });
+      
+      it('should handle direct button codes', async () => {
+        // Use direct button code (button-3 for example)
+        const buttonCodeResult = await client.callTool({
+          name: 'mcpretentious-mouse',
+          arguments: {
+            terminalId: testTerminalId,
+            event: 'press',
+            x: 30,
+            y: 15,
+            button: 'button-3'
+          }
+        });
+        
+        assert.ok(buttonCodeResult.content[0].text.includes('button 3'),
+          `Should handle direct button codes for ${backend}`);
+        
+        await client.callTool({
+          name: 'mcpretentious-mouse',
+          arguments: {
+            terminalId: testTerminalId,
+            event: 'release',
+            x: 30,
+            y: 15,
+            button: 'button-3'
+          }
+        });
+      });
+    });
+    
     describe('Multiple Terminals', () => {
       it('should handle multiple terminals', async () => {
         // Open first terminal

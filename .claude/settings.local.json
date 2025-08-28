@@ -21,7 +21,8 @@
       "Bash(osascript:*)",
       "Bash(npm test:*)",
       "Bash(git add:*)",
-      "Bash(tmux:*)"
+      "Bash(tmux:*)",
+      "Bash(npm run test:all:*)"
     ],
     "deny": [],
     "ask": []
