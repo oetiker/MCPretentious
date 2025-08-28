@@ -10,14 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 ### Changed
+
+### Fixed
+
+## [1.2.2] - 2025-08-28
+
+### Changed
 - **Simplified mouse modifier API** - Modifiers are now top-level boolean properties instead of nested object:
   - Before: `modifiers: { shift: true, alt: true, ctrl: true }`
   - After: `shift: true, alt: true, ctrl: true`
   - Modifiers default to `false` when not specified
   - Cleaner architecture: modifier bit manipulation moved to protocol layer where it belongs
-
-### Fixed
-
 ## [1.2.1] - 2025-08-28
 
 ### Added

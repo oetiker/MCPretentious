@@ -1,6 +1,6 @@
 {
   "name": "mcpretentious",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "MCPretentious - Universal Terminal MCP. High-performance terminal automation for iTerm2 (WebSocket) and tmux (control mode). Cross-platform support with cursor position, colors, and layered screenshots.",
   "main": "mcpretentious.js",
   "type": "module",

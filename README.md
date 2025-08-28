@@ -7,21 +7,14 @@
 **The ultimate terminal automation tool for LLM assistants.** MCPretentious enables your LLM to control multiple terminal windows across platforms - supporting both iTerm2 (macOS) and tmux (cross-platform). Run commands, debug applications, and interact with command-line tools on any system.
 
 <!-- LATEST-CHANGES-START -->
-## 📋 Latest Release (v1.2.1 - 2025-08-28)
-
-### Added
-- Comprehensive mouse integration tests covering all event types, buttons, and modifiers
+## 📋 Latest Release (v1.2.2 - 2025-08-28)
 
 ### Changed
-- **Refactored internal mouse architecture** for cleaner implementation:
-  - Unified mouse protocol handling through single `generateMouseEvent()` function
-  - Removed redundant convenience methods (`sendMouseClick`, `sendMouseDrag`, `sendMouseScroll`) from backends
-  - Simplified `mouse-sgr-protocol.js` to eliminate duplicate logic
-  - All backends now use consistent `sendMouseEvent()` method internally
-- **Note**: External MCP API remains unchanged - these are internal improvements only
-
-### Fixed
-- Fixed async command execution in tmux mouse methods to prevent "no server running" errors
+- **Simplified mouse modifier API** - Modifiers are now top-level boolean properties instead of nested object:
+  - Before: `modifiers: { shift: true, alt: true, ctrl: true }`
+  - After: `shift: true, alt: true, ctrl: true`
+  - Modifiers default to `false` when not specified
+  - Cleaner architecture: modifier bit manipulation moved to protocol layer where it belongs
 
 For full changelog, see [CHANGELOG.md](CHANGELOG.md)
 <!-- LATEST-CHANGES-END -->
