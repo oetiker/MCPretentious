@@ -484,7 +484,7 @@ Supported keys: ${SUPPORTED_KEYS}`,
     - 'button-0' through 'button-127': Direct SGR button codes
     - Common codes: 0=left, 1=middle, 2=right, 64=scrollUp, 65=scrollDown
     
-    MODIFIERS:
+    MODIFIERS (optional, default to false):
     - shift: Hold shift key during event
     - alt: Hold alt/option key during event
     - ctrl: Hold control key during event
@@ -506,13 +506,11 @@ Supported keys: ${SUPPORTED_KEYS}`,
         z.enum(['left', 'middle', 'right', 'scrollUp', 'scrollDown']),
         z.string().regex(/^button-\d{1,3}$/)
       ]).describe("Mouse button: named ('left', 'middle', 'right', 'scrollUp', 'scrollDown') or direct code ('button-0' through 'button-127')"),
-      modifiers: z.object({
-        shift: z.boolean().optional().default(false).describe("Shift key modifier"),
-        alt: z.boolean().optional().default(false).describe("Alt/Option key modifier"),
-        ctrl: z.boolean().optional().default(false).describe("Control key modifier")
-      }).optional().default({})
+      shift: z.boolean().optional().default(false).describe("Shift key modifier"),
+      alt: z.boolean().optional().default(false).describe("Alt/Option key modifier"),
+      ctrl: z.boolean().optional().default(false).describe("Control key modifier")
     },
-    async ({ terminalId, event, x, y, button, modifiers = {} }) => {
+    async ({ terminalId, event, x, y, button, shift = false, alt = false, ctrl = false }) => {
       return withTerminalSession(terminalId, async (sessionId) => {
         return safeExecute(async () => {
           const backend = backendManager.getBackendForTerminal(sessionId);
@@ -521,43 +519,16 @@ Supported keys: ${SUPPORTED_KEYS}`,
           if (backend.getType() !== 'tmux' && backend.getType() !== 'iterm') {
             throw new Error(`Mouse support is currently only available for TMux and iTerm2 backends. Current backend: ${backend.getName()}`);
           }
-
-          // Parse button to get numeric code
-          let buttonCode;
-          const buttonMap = {
-            'left': 0,
-            'middle': 1,
-            'right': 2,
-            'scrollUp': 64,
-            'scrollDown': 65
-          };
           
-          if (button in buttonMap) {
-            buttonCode = buttonMap[button];
-          } else if (button.startsWith('button-')) {
-            buttonCode = parseInt(button.slice(7));
-            if (isNaN(buttonCode) || buttonCode < 0 || buttonCode > 127) {
-              throw new Error(`Invalid button code: ${button}. Must be button-0 through button-127`);
-            }
-          } else {
-            throw new Error(`Invalid button: ${button}. Use named buttons (left, middle, right, scrollUp, scrollDown) or button-N format`);
-          }
-          
-          // Apply modifiers to button code
-          if (modifiers.shift) buttonCode += 4;
-          if (modifiers.alt) buttonCode += 8;
-          if (modifiers.ctrl) buttonCode += 16;
-          if (event === 'drag') buttonCode += 32;  // Add drag bit for drag events
-          
-          // Send the appropriate event
-          await backend.sendMouseEvent(sessionId, event, x, y, buttonCode);
+          // Send the mouse event with modifiers
+          await backend.sendMouseEvent(sessionId, event, x, y, button, { shift, alt, ctrl });
           
           // Format response message
-          const buttonName = button in buttonMap ? button : `button ${buttonCode & 0x03}`;
+          const buttonName = button.startsWith('button-') ? `button ${button.slice(7)}` : button;
           const modifierStr = [
-            modifiers.shift && 'Shift',
-            modifiers.alt && 'Alt',
-            modifiers.ctrl && 'Ctrl'
+            shift && 'Shift',
+            alt && 'Alt',
+            ctrl && 'Ctrl'
           ].filter(Boolean).join('+');
           
           const eventDescription = event === 'drag' ? 'drag' : 

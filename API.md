@@ -117,10 +117,9 @@ Send mouse events to a terminal using SGR mouse protocol. Provides direct contro
 - `button` (string, required): Mouse button, can be:
   - Named buttons: `"left"`, `"middle"`, `"right"`, `"scrollUp"`, `"scrollDown"`
   - Direct button codes: `"button-0"` through `"button-127"` for SGR protocol codes
-- `modifiers` (object, optional): Keyboard modifiers held during event:
-  - `shift` (boolean): Shift key held
-  - `alt` (boolean): Alt/Option key held
-  - `ctrl` (boolean): Control key held
+- `shift` (boolean, optional): Shift key modifier (default: false)
+- `alt` (boolean, optional): Alt/Option key modifier (default: false)
+- `ctrl` (boolean, optional): Control key modifier (default: false)
 
 **Returns**: Success message with event details
 
@@ -172,7 +171,7 @@ await use_mcp_tool("mcpretentious", "mcpretentious-mouse", {
   x: 20,
   y: 15,
   button: "right",
-  modifiers: { ctrl: true }
+  ctrl: true
 });
 await use_mcp_tool("mcpretentious", "mcpretentious-mouse", {
   terminalId: "iterm-12345-1",
@@ -180,7 +179,7 @@ await use_mcp_tool("mcpretentious", "mcpretentious-mouse", {
   x: 20,
   y: 15,
   button: "right",
-  modifiers: { ctrl: true }
+  ctrl: true
 });
 
 // Scroll up

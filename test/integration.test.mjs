@@ -530,7 +530,7 @@ for (const backend of availableBackends) {
             x: 10,
             y: 5,
             button: 'left',
-            modifiers: { shift: true }
+            shift: true
           }
         });
         
@@ -546,7 +546,7 @@ for (const backend of availableBackends) {
             x: 10,
             y: 5,
             button: 'left',
-            modifiers: { shift: true }
+            shift: true
           }
         });
         
@@ -559,7 +559,8 @@ for (const backend of availableBackends) {
             x: 10,
             y: 5,
             button: 'right',
-            modifiers: { ctrl: true, alt: true }
+            ctrl: true,
+            alt: true
           }
         });
         
@@ -576,7 +577,8 @@ for (const backend of availableBackends) {
             x: 10,
             y: 5,
             button: 'right',
-            modifiers: { ctrl: true, alt: true }
+            ctrl: true,
+            alt: true
           }
         });
       });
