@@ -463,50 +463,109 @@ Supported keys: ${SUPPORTED_KEYS}`,
 
   server.tool(
     "mcpretentious-mouse",
-    "Send mouse interactions to a terminal (click, drag, or scroll). Coordinates are 0-based character positions.",
+    `Send mouse events to a terminal using SGR mouse protocol.
+    
+    This tool provides direct control over mouse events following the terminal's SGR (Select Graphic Rendition) mouse protocol.
+    
+    EVENTS:
+    - 'press': Mouse button press event
+    - 'release': Mouse button release event  
+    - 'drag': Mouse movement with button held down
+    
+    BUTTONS (use names or button-N format):
+    Named buttons:
+    - 'left': Left mouse button
+    - 'middle': Middle mouse button
+    - 'right': Right mouse button
+    - 'scrollUp': Scroll wheel up
+    - 'scrollDown': Scroll wheel down
+    
+    Direct button codes:
+    - 'button-0' through 'button-127': Direct SGR button codes
+    - Common codes: 0=left, 1=middle, 2=right, 64=scrollUp, 65=scrollDown
+    
+    MODIFIERS:
+    - shift: Hold shift key during event
+    - alt: Hold alt/option key during event
+    - ctrl: Hold control key during event
+    
+    COORDINATES:
+    - x and y are 0-based character positions (column, row)
+    - The protocol will convert to 1-based coordinates internally
+    
+    EXAMPLES:
+    - Left click at (10,5): event='press', button='left', x=10, y=5, then event='release' with same coordinates
+    - Drag from (5,5) to (15,10): event='press' at (5,5), event='drag' at (15,10), event='release' at (15,10)
+    - Scroll up at (20,8): event='press', button='scrollUp', x=20, y=8 (no release needed for scroll)`,
     {
       terminalId: z.string().describe("The terminal ID to send mouse events to"),
-      action: z.enum(['click', 'drag', 'scroll']).describe("Type of mouse action"),
+      event: z.enum(['press', 'release', 'drag']).describe("Mouse event type: 'press' for button down, 'release' for button up, 'drag' for movement with button held"),
       x: z.number().min(0).describe("X coordinate (column position, 0-based)"),
       y: z.number().min(0).describe("Y coordinate (row position, 0-based)"),
-      endX: z.number().min(0).optional().describe("End X coordinate for drag action"),
-      endY: z.number().min(0).optional().describe("End Y coordinate for drag action"),
-      button: z.enum(['left', 'middle', 'right']).optional().default('left').describe("Mouse button (default: left)"),
-      direction: z.enum(['up', 'down']).optional().describe("Scroll direction (required for scroll action)"),
-      amount: z.number().min(1).max(10).optional().default(1).describe("Number of scroll steps (default: 1, for scroll action)")
+      button: z.union([
+        z.enum(['left', 'middle', 'right', 'scrollUp', 'scrollDown']),
+        z.string().regex(/^button-\d{1,3}$/)
+      ]).describe("Mouse button: named ('left', 'middle', 'right', 'scrollUp', 'scrollDown') or direct code ('button-0' through 'button-127')"),
+      modifiers: z.object({
+        shift: z.boolean().optional().default(false).describe("Shift key modifier"),
+        alt: z.boolean().optional().default(false).describe("Alt/Option key modifier"),
+        ctrl: z.boolean().optional().default(false).describe("Control key modifier")
+      }).optional().default({})
     },
-    async ({ terminalId, action, x, y, endX, endY, button, direction, amount }) => {
+    async ({ terminalId, event, x, y, button, modifiers = {} }) => {
       return withTerminalSession(terminalId, async (sessionId) => {
         return safeExecute(async () => {
           const backend = backendManager.getBackendForTerminal(sessionId);
           
           // Check if backend supports mouse operations
-          if (backend.getType() !== 'tmux') {
-            throw new Error(`Mouse support is currently only available for TMux backend. Current backend: ${backend.getName()}`);
+          if (backend.getType() !== 'tmux' && backend.getType() !== 'iterm') {
+            throw new Error(`Mouse support is currently only available for TMux and iTerm2 backends. Current backend: ${backend.getName()}`);
           }
 
-          switch (action) {
-            case 'click':
-              await backend.sendMouseClick(sessionId, x, y, button);
-              return successResponse(`Mouse ${button} click sent to terminal at (${x}, ${y})`);
-              
-            case 'drag':
-              if (endX === undefined || endY === undefined) {
-                throw new Error("endX and endY are required for drag action");
-              }
-              await backend.sendMouseDrag(sessionId, x, y, endX, endY, button);
-              return successResponse(`Mouse ${button} drag from (${x}, ${y}) to (${endX}, ${endY})`);
-              
-            case 'scroll':
-              if (!direction) {
-                throw new Error("direction is required for scroll action");
-              }
-              await backend.sendMouseScroll(sessionId, x, y, direction, amount);
-              return successResponse(`Mouse scrolled ${direction} ${amount} step(s) at (${x}, ${y})`);
-              
-            default:
-              throw new Error(`Unknown mouse action: ${action}`);
+          // Parse button to get numeric code
+          let buttonCode;
+          const buttonMap = {
+            'left': 0,
+            'middle': 1,
+            'right': 2,
+            'scrollUp': 64,
+            'scrollDown': 65
+          };
+          
+          if (button in buttonMap) {
+            buttonCode = buttonMap[button];
+          } else if (button.startsWith('button-')) {
+            buttonCode = parseInt(button.slice(7));
+            if (isNaN(buttonCode) || buttonCode < 0 || buttonCode > 127) {
+              throw new Error(`Invalid button code: ${button}. Must be button-0 through button-127`);
+            }
+          } else {
+            throw new Error(`Invalid button: ${button}. Use named buttons (left, middle, right, scrollUp, scrollDown) or button-N format`);
           }
+          
+          // Apply modifiers to button code
+          if (modifiers.shift) buttonCode += 4;
+          if (modifiers.alt) buttonCode += 8;
+          if (modifiers.ctrl) buttonCode += 16;
+          if (event === 'drag') buttonCode += 32;  // Add drag bit for drag events
+          
+          // Send the appropriate event
+          await backend.sendMouseEvent(sessionId, event, x, y, buttonCode);
+          
+          // Format response message
+          const buttonName = button in buttonMap ? button : `button ${buttonCode & 0x03}`;
+          const modifierStr = [
+            modifiers.shift && 'Shift',
+            modifiers.alt && 'Alt',
+            modifiers.ctrl && 'Ctrl'
+          ].filter(Boolean).join('+');
+          
+          const eventDescription = event === 'drag' ? 'drag' : 
+                                   event === 'press' ? 'press' : 'release';
+          
+          return successResponse(
+            `Mouse ${eventDescription}: ${buttonName}${modifierStr ? ` with ${modifierStr}` : ''} at (${x}, ${y})`
+          );
         }, "Failed to send mouse event");
       });
     }

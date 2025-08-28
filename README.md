@@ -214,7 +214,12 @@ Other implementations have critical limitations:
 ### Supported Input Types
 - Regular text and commands
 - Special keys: Enter, Escape, Tab, Arrows, Ctrl+[A-Z], F1-F12
-- Mouse events: left/middle/right click, drag operations, scroll up/down
+- Mouse events with SGR protocol:
+  - Button events: left/middle/right click with press and release
+  - Drag operations: movement with button held down
+  - Scroll: wheel up/down events
+  - Modifiers: Shift, Alt, Ctrl key combinations
+  - Direct protocol access: button-0 through button-127
 - ASCII codes for special characters (© ™ • etc.)
 - Complex key combinations for TUI navigation
 

@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 ### Changed
+- **Redesigned mouse API to align with SGR protocol** - The `mcpretentious-mouse` tool now provides direct control over mouse events:
+  - Changed from high-level actions (`click`, `drag`, `scroll`) to protocol-aligned events (`press`, `release`, `drag`)
+  - Added support for named buttons (`left`, `middle`, `right`, `scrollUp`, `scrollDown`) and direct button codes (`button-0` through `button-127`)
+  - Added keyboard modifier support (Shift, Alt, Ctrl) for all mouse events
+  - Comprehensive in-tool documentation of all parameters and valid values
+  - Mouse coordinates remain 0-based for developer convenience (converted to 1-based internally for SGR protocol)
 
 ### Fixed
 

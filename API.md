@@ -103,6 +103,96 @@ Resizes a terminal to specified dimensions.
 
 **Returns**: Success message with new dimensions
 
+### `mcpretentious-mouse`
+Send mouse events to a terminal using SGR mouse protocol. Provides direct control over mouse button presses, releases, and drag events.
+
+**Parameters**:
+- `terminalId` (string, required): ID of the terminal to send mouse events to
+- `event` (string, required): Mouse event type:
+  - `"press"`: Mouse button down
+  - `"release"`: Mouse button up
+  - `"drag"`: Mouse movement with button held down
+- `x` (number, required): X coordinate (column position, 0-based)
+- `y` (number, required): Y coordinate (row position, 0-based)
+- `button` (string, required): Mouse button, can be:
+  - Named buttons: `"left"`, `"middle"`, `"right"`, `"scrollUp"`, `"scrollDown"`
+  - Direct button codes: `"button-0"` through `"button-127"` for SGR protocol codes
+- `modifiers` (object, optional): Keyboard modifiers held during event:
+  - `shift` (boolean): Shift key held
+  - `alt` (boolean): Alt/Option key held
+  - `ctrl` (boolean): Control key held
+
+**Returns**: Success message with event details
+
+**Examples**:
+```javascript
+// Simple left click at position (10, 5)
+await use_mcp_tool("mcpretentious", "mcpretentious-mouse", {
+  terminalId: "iterm-12345-1",
+  event: "press",
+  x: 10,
+  y: 5,
+  button: "left"
+});
+await use_mcp_tool("mcpretentious", "mcpretentious-mouse", {
+  terminalId: "iterm-12345-1",
+  event: "release",
+  x: 10,
+  y: 5,
+  button: "left"
+});
+
+// Drag from (5, 5) to (15, 10)
+await use_mcp_tool("mcpretentious", "mcpretentious-mouse", {
+  terminalId: "iterm-12345-1",
+  event: "press",
+  x: 5,
+  y: 5,
+  button: "left"
+});
+await use_mcp_tool("mcpretentious", "mcpretentious-mouse", {
+  terminalId: "iterm-12345-1",
+  event: "drag",
+  x: 15,
+  y: 10,
+  button: "left"
+});
+await use_mcp_tool("mcpretentious", "mcpretentious-mouse", {
+  terminalId: "iterm-12345-1",
+  event: "release",
+  x: 15,
+  y: 10,
+  button: "left"
+});
+
+// Right-click with Ctrl held
+await use_mcp_tool("mcpretentious", "mcpretentious-mouse", {
+  terminalId: "iterm-12345-1",
+  event: "press",
+  x: 20,
+  y: 15,
+  button: "right",
+  modifiers: { ctrl: true }
+});
+await use_mcp_tool("mcpretentious", "mcpretentious-mouse", {
+  terminalId: "iterm-12345-1",
+  event: "release",
+  x: 20,
+  y: 15,
+  button: "right",
+  modifiers: { ctrl: true }
+});
+
+// Scroll up
+await use_mcp_tool("mcpretentious", "mcpretentious-mouse", {
+  terminalId: "iterm-12345-1",
+  event: "press",
+  x: 40,
+  y: 12,
+  button: "scrollUp"
+});
+```
+
 ### `mcpretentious-screenshot` 
 Takes a layered screenshot of the terminal screen with configurable data layers to minimize output size.
 
