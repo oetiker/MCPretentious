@@ -8,10 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Mouse support for iTerm2 backend** - Extended mouse functionality to iTerm2
+  - Uses the same SGR mouse protocol as tmux backend
+  - Full parity with tmux mouse features (click, drag, scroll)
+- Shared SGR mouse protocol module (`lib/mouse-sgr-protocol.js`) for code reuse
+- Comprehensive unit tests for SGR mouse protocol generation
 
 ### Changed
+- Refactored mouse implementation to eliminate code duplication between backends
+- Both iTerm2 and tmux backends now use shared mouse protocol utilities
 
 ### Fixed
+- Fixed tmux command escaping to properly handle bracket characters in mouse escape sequences
 
 ## [1.1.0] - 2025-08-28
 

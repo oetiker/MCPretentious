@@ -19,6 +19,8 @@
 - Comprehensive test suite for mouse functionality (`test/tmux-mouse.test.mjs`)
 - `close()` method implementation for TmuxClientSimple for interface compatibility
 
+_Note: The upcoming release extends mouse support to iTerm2 as well!_
+
 For full changelog, see [CHANGELOG.md](CHANGELOG.md)
 <!-- LATEST-CHANGES-END -->
 
@@ -38,6 +40,7 @@ Once installed, your LLM assistant can:
 - **Run commands and scripts** in terminal windows (iTerm2 or tmux)
 - **Test and debug code** by executing it and reading output
 - **Interact with TUI applications** like vim, htop, or database CLIs
+- **Control terminal apps with mouse** - click, drag, scroll in both iTerm2 and tmux
 - **Get real-time feedback from TUI apps** by reading the actual screen content with cursor position and colors
 - **Manage multiple terminal sessions** simultaneously
 - **Monitor long-running processes** checking on progress or logs
@@ -170,6 +173,7 @@ In API mode, the `mcpretentious-open` tool gains an optional `backend` parameter
 | Colors | Full RGB | ANSI 256 |
 | Styles | All attributes | Bold, italic, underline |
 | Screenshots | Native | ANSI parsed |
+| Mouse support | Full SGR protocol | Full SGR protocol |
 | Focus management | Automatic | Terminal-dependent |
 | Remote servers | No | Yes (via SSH) |
 | Authentication | Cookie/key | Unix permissions |
@@ -201,12 +205,14 @@ Other implementations have critical limitations:
 - Open new terminal windows (without stealing focus!)
 - Execute any command or script
 - Send special keys (Ctrl+C, arrows, function keys, etc.)
+- Send mouse events (click, drag, scroll) for TUI interaction
 - Read terminal output or just what's visible on screen
 - Close terminals when done
 
 ### Supported Input Types
 - Regular text and commands
 - Special keys: Enter, Escape, Tab, Arrows, Ctrl+[A-Z], F1-F12
+- Mouse events: left/middle/right click, drag operations, scroll up/down
 - ASCII codes for special characters (© ™ • etc.)
 - Complex key combinations for TUI navigation
 
