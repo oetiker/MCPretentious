@@ -7,14 +7,10 @@
 MCP server for terminal control. Supports iTerm2 (macOS) via WebSocket API and tmux (cross-platform) via direct commands.
 
 <!-- LATEST-CHANGES-START -->
-## 📋 Latest Release (v1.2.2 - 2025-08-28)
+## 📋 Latest Release (v1.2.3 - 2025-08-30)
 
-### Changed
-- **Simplified mouse modifier API** - Modifiers are now top-level boolean properties instead of nested object:
-  - Before: `modifiers: { shift: true, alt: true, ctrl: true }`
-  - After: `shift: true, alt: true, ctrl: true`
-  - Modifiers default to `false` when not specified
-  - Cleaner architecture: modifier bit manipulation moved to protocol layer where it belongs
+### Fixed
+- Fixed missing `setSessionSize` method in tmux backend that prevented terminal resizing
 
 For full changelog, see [CHANGELOG.md](CHANGELOG.md)
 <!-- LATEST-CHANGES-END -->

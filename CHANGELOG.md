@@ -12,8 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
-- Fixed missing `setSessionSize` method in tmux backend that prevented terminal resizing
 
+## [1.2.3] - 2025-08-30
+
+### Fixed
+- Fixed missing `setSessionSize` method in tmux backend that prevented terminal resizing
 ## [1.2.2] - 2025-08-28
 
 ### Changed
