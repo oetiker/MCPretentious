@@ -1,28 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:iterm2.com)",
-      "WebFetch(domain:iterm2.com)",
-      "Bash(mkdir:*)",
-      "mcp__context7__resolve-library-id",
-      "mcp__context7__get-library-docs",
-      "WebSearch",
-      "WebFetch(domain:github.com)",
-      "Bash(grep:*)",
-      "Read(//private/tmp/**)",
-      "Read(//tmp/**)",
-      "Bash(touch:*)",
-      "Bash(node:*)",
-      "Bash(timeout:*)",
-      "Bash(npm run test:integration:*)",
-      "Bash(VERBOSE=1 node --test test/iterm-safe-integration.test.mjs)",
-      "Bash(export VERBOSE=1)",
-      "Bash(DEBUG=1 node -e \"\nimport { getClient } from ''''./lib/iterm2-client.js'''';\n\nasync function test() {\n  const client = await getClient();\n  const sessionId = await client.createTab();\n  console.log(''''Created session:'''', sessionId);\n  \n  await new Promise(r => setTimeout(r, 1000));\n  \n  const closed = await client.closeSession(sessionId, true);\n  console.log(''''Closed:'''', closed);\n  \n  client.close();\n}\n\ntest().catch(console.error);\n\")",
-      "Bash(osascript:*)",
-      "Bash(npm test:*)",
-      "Bash(git add:*)",
-      "Bash(tmux:*)",
-      "Bash(npm run test:all:*)"
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []
