@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+## [1.3.0] - 2025-09-03
+
+### Added
 - **Alt key support** - Comprehensive Alt key combinations for `mcpretentious-type` tool
   - Alt + Letters (a-z): `alt-a` through `alt-z`
   - Alt + Shift + Letters: `alt-shift-a` through `alt-shift-z` for uppercase
@@ -16,11 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Alt + Function keys (F1-F12): `alt-f1` through `alt-f12`
   - Alt + Special keys: tab, enter, space, backspace
   - Uses standard terminal escape sequences (ESC prefix and CSI modifiers)
-
-### Changed
-
-### Fixed
-
 ## [1.2.3] - 2025-08-30
 
 ### Fixed
