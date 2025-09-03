@@ -54,6 +54,50 @@ const TERMINAL_KEY_MAP = {
   'f10': '\x1b[21~',
   'f11': '\x1b[23~',
   'f12': '\x1b[24~',
+  // Alt keys (ESC followed by character)
+  ...Object.fromEntries(
+    Array.from({ length: 26 }, (_, i) => 
+      [`alt-${String.fromCharCode(97 + i)}`, `\x1b${String.fromCharCode(97 + i)}`]
+    )
+  ),
+  // Alt keys (uppercase)
+  ...Object.fromEntries(
+    Array.from({ length: 26 }, (_, i) => 
+      [`alt-shift-${String.fromCharCode(97 + i)}`, `\x1b${String.fromCharCode(65 + i)}`]
+    )
+  ),
+  // Alt with numbers
+  ...Object.fromEntries(
+    Array.from({ length: 10 }, (_, i) => 
+      [`alt-${i}`, `\x1b${i}`]
+    )
+  ),
+  // Alt with special characters
+  'alt-tab': '\x1b\t',
+  'alt-enter': '\x1b\r',
+  'alt-space': '\x1b ',
+  'alt-backspace': '\x1b\x7f',
+  'alt-left': '\x1b[1;3D',
+  'alt-right': '\x1b[1;3C',
+  'alt-up': '\x1b[1;3A',
+  'alt-down': '\x1b[1;3B',
+  'alt-home': '\x1b[1;3H',
+  'alt-end': '\x1b[1;3F',
+  'alt-pageup': '\x1b[5;3~',
+  'alt-pagedown': '\x1b[6;3~',
+  // Alt with function keys
+  'alt-f1': '\x1b[1;3P',
+  'alt-f2': '\x1b[1;3Q',
+  'alt-f3': '\x1b[1;3R',
+  'alt-f4': '\x1b[1;3S',
+  'alt-f5': '\x1b[15;3~',
+  'alt-f6': '\x1b[17;3~',
+  'alt-f7': '\x1b[18;3~',
+  'alt-f8': '\x1b[19;3~',
+  'alt-f9': '\x1b[20;3~',
+  'alt-f10': '\x1b[21;3~',
+  'alt-f11': '\x1b[23;3~',
+  'alt-f12': '\x1b[24;3~',
 };
 
 const SUPPORTED_KEYS = Object.keys(TERMINAL_KEY_MAP).join(', ');
